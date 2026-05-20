@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import time
 
 # ============================================================
-# CONFIGURAÇÃO
+# CONFIGURAÇÃO DA PÁGINA
 # ============================================================
 
 st.set_page_config(
@@ -12,15 +12,32 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("⚡ GridZero Replay Simulator")
+# ============================================================
+# CSS CUSTOMIZADO
+# ============================================================
 
 st.markdown("""
-Simulador de operação GridZero utilizando:
-- Curva real de geração FV
-- Curva real de carga
-- Replay temporal
-- Visualização de corte de geração
-""")
+<style>
+
+.main {
+    background-color: #f7f9fc;
+}
+
+div[data-testid="metric-container"] {
+    background-color: white;
+    border: 1px solid #e6e6e6;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================
+# TÍTULO
+# ============================================================
+
+st.title("⚡ GridZero Replay Simulator")
 
 # ============================================================
 # SIDEBAR
@@ -40,6 +57,8 @@ speed = st.sidebar.slider(
     0.5,
     0.1
 )
+
+st.sidebar.divider()
 
 # ============================================================
 # UPLOADS
@@ -89,16 +108,8 @@ if generation_file and load_file:
     gen_df = pd.read_csv(generation_file)
     load_df = pd.read_csv(load_file)
 
-    # ========================================================
-    # RENOMEIA COLUNAS
-    # ========================================================
-
     gen_df.columns = ["DataHora", "Geracao"]
     load_df.columns = ["DataHora", "Carga"]
-
-    # ========================================================
-    # DATETIME
-    # ========================================================
 
     gen_df["DataHora"] = pd.to_datetime(
         gen_df["DataHora"]
@@ -133,7 +144,7 @@ if generation_file and load_file:
     df["Geracao_Cortada"] = df["Geracao"]
 
     # ========================================================
-    # ENERGIA CONSUMIDA DA LIGHT
+    # ENERGIA DA LIGHT
     # ========================================================
 
     df["Energia_Light"] = (
@@ -142,15 +153,16 @@ if generation_file and load_file:
     )
 
     # ========================================================
-    # EXPORTAÇÃO
+    # GRIDZERO
     # ========================================================
 
-    df["Exportando"] = (
-        df["Energia_Light"] < 0
+    df["GridZero_Ativo"] = (
+        df["Geracao"]
+        > df["Carga"]
     )
 
     # ========================================================
-    # SESSION STATE
+    # SESSION
     # ========================================================
 
     if "index" not in st.session_state:
@@ -158,16 +170,12 @@ if generation_file and load_file:
         st.session_state.index = 0
 
     # ========================================================
-    # RESET
+    # REPLAY
     # ========================================================
 
     if st.button("🔄 Reiniciar Replay"):
 
         st.session_state.index = 0
-
-    # ========================================================
-    # PLAYBACK
-    # ========================================================
 
     current_index = st.session_state.index
 
@@ -180,19 +188,15 @@ if generation_file and load_file:
     current = df.iloc[current_index]
 
     # ========================================================
-    # KPIs
+    # KPI SUPERIOR
     # ========================================================
 
-    st.subheader(
-        f"🕒 {current['DataHora']}"
-    )
-
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
 
         st.metric(
-            "Carga",
+            "Carga Atual",
             f"{current['Carga']:.0f} kW"
         )
 
@@ -217,17 +221,15 @@ if generation_file and load_file:
             f"{current['Energia_Light']:.0f} kW"
         )
 
-    # ========================================================
-    # STATUS
-    # ========================================================
+    with col5:
 
-    if current["Exportando"]:
+        if current["GridZero_Ativo"]:
 
-        st.error("⚠ EXPORTANDO")
+            st.success("GridZero Ativo")
 
-    else:
+        else:
 
-        st.success("✅ GRIDZERO")
+            st.info("Sem Limitação")
 
     # ========================================================
     # GRÁFICO
@@ -305,7 +307,7 @@ if generation_file and load_file:
     ))
 
     # ========================================================
-    # ENERGIA CONSUMIDA DA LIGHT
+    # ENERGIA DA LIGHT
     # ========================================================
 
     fig.add_trace(go.Scatter(
@@ -390,20 +392,14 @@ if generation_file and load_file:
 
     )
 
-    # ========================================================
-    # EXIBE
-    # ========================================================
-
     st.plotly_chart(
         fig,
         use_container_width=True
     )
 
     # ========================================================
-    # ESTATÍSTICAS
+    # KPIs INFERIORES
     # ========================================================
-
-    st.subheader("Resumo Operacional")
 
     total_import = replay_df[
         replay_df["Energia_Light"] > 0
@@ -419,34 +415,47 @@ if generation_file and load_file:
         - replay_df["Geracao_Limitada"]
     ).max()
 
-    col1, col2, col3 = st.columns(3)
+    total_hours = replay_df[
+        replay_df["GridZero_Ativo"]
+    ].shape[0]
+
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
 
         st.metric(
-            "Energia Consumida da Light",
+            "Energia Importada da Light",
             f"{total_import:.0f} kWh"
         )
 
     with col2:
 
         st.metric(
-            "Energia Cortada",
+            "Energia que seria Exportada",
             f"{total_cut:.0f} kWh"
         )
 
     with col3:
 
         st.metric(
-            "Máximo Corte",
+            "Máxima Geração Cortada",
             f"{max_cut:.0f} kW"
+        )
+
+    with col4:
+
+        st.metric(
+            "Horas com Corte",
+            f"{total_hours:.0f} h"
         )
 
     # ========================================================
     # TABELA
     # ========================================================
 
-    st.subheader("Dados Operacionais")
+    st.subheader(
+        "📋 Dados Operacionais"
+    )
 
     st.dataframe(
 
@@ -458,7 +467,7 @@ if generation_file and load_file:
                 "Geracao_Cortada",
                 "Energia_Light"
             ]
-        ].tail(50),
+        ].tail(100),
 
         use_container_width=True
 
