@@ -42,7 +42,8 @@ class Inverter:
             / 100
         )
 
-        ramp_rate = 50
+        # resposta mais suave
+        ramp_rate = 10
 
         if self.current_power < target_power:
             self.current_power += ramp_rate
@@ -92,7 +93,7 @@ class AGC150:
     def __init__(self):
 
         self.setpoint_import = 20
-        self.kp = 2.0
+        self.kp = 1.0
 
         self.export_alarm = False
         self.ansi32_trip = False
@@ -199,6 +200,12 @@ auto_mode = st.sidebar.checkbox(
     value=True
 )
 
+# PLAY / STOP
+run_simulation = st.sidebar.toggle(
+    "▶ Simulação Rodando",
+    value=True
+)
+
 # ============================================================
 # REFERÊNCIAS
 # ============================================================
@@ -231,7 +238,8 @@ if auto_mode:
     else:
         base_load = 1800
 
-    p_load = base_load + random.randint(-100, 100)
+    # ruído reduzido
+    p_load = base_load + random.randint(-20, 20)
 
 else:
 
@@ -360,10 +368,10 @@ st.session_state.history = pd.concat(
     ignore_index=True
 )
 
-if len(st.session_state.history) > 100:
+if len(st.session_state.history) > 300:
 
     st.session_state.history = (
-        st.session_state.history.iloc[-100:]
+        st.session_state.history.iloc[-300:]
     )
 
 # ============================================================
@@ -467,8 +475,18 @@ fig.add_trace(go.Scatter(
 fig.update_layout(
 
     height=500,
-    xaxis_title="Tempo",
-    yaxis_title="Potência (kW)"
+
+    xaxis=dict(
+        title="Tempo",
+        rangeslider=dict(
+            visible=True
+        ),
+        type="date"
+    ),
+
+    yaxis_title="Potência (kW)",
+
+    hovermode="x unified"
 
 )
 
@@ -558,14 +576,18 @@ if agc.ansi32_trip:
 # AVANÇO DO TEMPO
 # ============================================================
 
-st.session_state.sim_time += pd.Timedelta(
-    minutes=30
-)
+if run_simulation:
+
+    st.session_state.sim_time += pd.Timedelta(
+        minutes=30
+    )
 
 # ============================================================
 # AUTO REFRESH
 # ============================================================
 
-time.sleep(0.2)
+if run_simulation:
 
-st.rerun()
+    time.sleep(0.5)
+
+    st.rerun()
