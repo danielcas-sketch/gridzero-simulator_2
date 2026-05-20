@@ -1,68 +1,127 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
+import numpy as np
 import time
 
 # =========================================================
-# CONFIG PAGE
+# PAGE CONFIG
 # =========================================================
 
 st.set_page_config(
-    page_title="GridZero Simulator",
-    layout="wide"
+    page_title="GridZero Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # =========================================================
-# CSS CUSTOM
+# CSS PROFISSIONAL
 # =========================================================
 
 st.markdown("""
 <style>
 
-.main {
-    background-color: #f5f7fb;
+/* =====================================================
+FUNDO
+===================================================== */
+
+.stApp {
+    background-color: #f4f6fb;
 }
+
+/* =====================================================
+SIDEBAR
+===================================================== */
+
+section[data-testid="stSidebar"] {
+    background-color: #f0f2f6;
+    border-right: 1px solid #dfe3eb;
+}
+
+/* =====================================================
+REMOVE ESPAÇAMENTO
+===================================================== */
 
 .block-container {
     padding-top: 1rem;
+    padding-bottom: 1rem;
+    max-width: 100%;
 }
 
-.card {
+/* =====================================================
+CARDS
+===================================================== */
+
+.kpi-card {
     background: white;
-    padding: 20px;
     border-radius: 18px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    height: 120px;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-title {
+    font-size: 15px;
+    font-weight: 600;
     margin-bottom: 10px;
 }
 
-.metric-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #555;
-}
-
-.metric-value {
-    font-size: 38px;
+.kpi-value {
+    font-size: 42px;
     font-weight: 700;
+    line-height: 1;
 }
 
-.metric-sub {
+.kpi-sub {
     font-size: 13px;
-    color: #888;
+    color: #7b8190;
+    margin-top: 8px;
 }
 
-.sidebar .sidebar-content {
-    background-color: #f1f3f6;
+.status-ok {
+    color: #16a34a;
+}
+
+.status-export {
+    color: #dc2626;
+}
+
+/* =====================================================
+TÍTULOS
+===================================================== */
+
+.section-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* =====================================================
+CAIXAS RESUMO
+===================================================== */
+
+.summary-box {
+    background: white;
+    border-radius: 16px;
+    padding: 22px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* =====================================================
+TABELA
+===================================================== */
+
+[data-testid="stDataFrame"] {
+    border-radius: 16px;
+    overflow: hidden;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
-# =========================================================
-# HEADER
-# =========================================================
-
-st.title("⚡ GridZero Replay Simulator")
 
 # =========================================================
 # SIDEBAR
@@ -70,7 +129,7 @@ st.title("⚡ GridZero Replay Simulator")
 
 with st.sidebar:
 
-    st.header("Controles")
+    st.markdown("## Controles")
 
     run_simulation = st.toggle(
         "▶ Rodando Replay",
@@ -85,39 +144,83 @@ with st.sidebar:
         0.1
     )
 
-    st.divider()
+    st.markdown("---")
+
+    st.markdown("### Intervalo dos dados")
+
+    start_date = st.date_input(
+        "Início"
+    )
+
+    end_date = st.date_input(
+        "Fim"
+    )
+
+    st.markdown("---")
+
+    st.markdown("### Zoom rápido")
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.button("24h")
+
+    with c2:
+        st.button("7 dias")
+
+    with c3:
+        st.button("30 dias")
+
+    with c4:
+        st.button("1 ano")
+
+    st.markdown("---")
 
     generation_file = st.file_uploader(
-        "CSV Geração",
+        "geracao.csv",
         type=["csv"]
     )
 
     load_file = st.file_uploader(
-        "CSV Carga",
+        "consumo.csv",
         type=["csv"]
     )
 
-    st.divider()
-
-    if st.button("🔄 Reiniciar Replay"):
-
-        st.session_state.index = 0
-
 # =========================================================
-# CSV MODEL
+# HEADER
 # =========================================================
 
-with st.expander("📄 Modelo CSV"):
+top1, top2 = st.columns([1.2, 6])
 
-    st.code("""
-DataHora,Potencia
-2026-01-01 00:00,0
-2026-01-01 01:00,0
-2026-01-01 12:00,3200
-""")
+with top1:
+
+    st.markdown("""
+    <div class="kpi-card"
+    style="height:120px; display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;">
+
+    <div style="
+    font-size:42px;
+    font-weight:700;
+    ">
+    🕒
+    </div>
+
+    <div style="
+    font-size:20px;
+    font-weight:700;
+    margin-top:10px;
+    ">
+    Replay
+    </div>
+
+    </div>
+    """, unsafe_allow_html=True)
 
 # =========================================================
-# PROCESS
+# PROCESSAMENTO
 # =========================================================
 
 if generation_file and load_file:
@@ -140,10 +243,6 @@ if generation_file and load_file:
         load_df["DataHora"]
     )
 
-    # =====================================================
-    # MERGE
-    # =====================================================
-
     df = pd.merge(
         gen_df,
         load_df,
@@ -151,7 +250,7 @@ if generation_file and load_file:
     )
 
     # =====================================================
-    # GRIDZERO LOGIC
+    # GRIDZERO
     # =====================================================
 
     df["Geracao_Limitada"] = df[
@@ -169,25 +268,15 @@ if generation_file and load_file:
     )
 
     # =====================================================
-    # STATUS
-    # =====================================================
-
-    df["Exportando"] = (
-        df["Energia_Light"] < 0
-    )
-
-    # =====================================================
     # SESSION
     # =====================================================
 
     if "index" not in st.session_state:
-
         st.session_state.index = 0
 
     current_index = st.session_state.index
 
     if current_index >= len(df):
-
         current_index = len(df) - 1
 
     replay_df = df.iloc[:current_index + 1]
@@ -195,112 +284,104 @@ if generation_file and load_file:
     current = df.iloc[current_index]
 
     # =====================================================
-    # TOP KPIS
+    # TOP KPIs
     # =====================================================
 
-    st.subheader(
-        f"🕒 {current['DataHora']}"
-    )
+    with top2:
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+        c1, c2, c3, c4, c5 = st.columns(5)
 
-    # =====================================================
-    # CARD FUNCTION
-    # =====================================================
+        def kpi_card(
+            coluna,
+            titulo,
+            valor,
+            cor,
+            subtitulo=""
+        ):
 
-    def card(
-        coluna,
-        titulo,
-        valor,
-        cor,
-        subtitulo=""
-    ):
+            with coluna:
 
-        with coluna:
+                st.markdown(f"""
+                <div class="kpi-card">
 
-            st.markdown(f"""
-            <div class="card">
+                    <div class="kpi-title"
+                    style="color:{cor}">
+                    {titulo}
+                    </div>
 
-                <div class="metric-title"
-                style="color:{cor}">
-                {titulo}
+                    <div class="kpi-value"
+                    style="color:{cor}">
+                    {valor}
+                    </div>
+
+                    <div class="kpi-sub">
+                    {subtitulo}
+                    </div>
+
                 </div>
+                """, unsafe_allow_html=True)
 
-                <div class="metric-value"
-                style="color:{cor}">
-                {valor}
-                </div>
+        kpi_card(
+            c1,
+            "Carga Atual",
+            f"{current['Carga']:.0f} kW",
+            "#2563eb"
+        )
 
-                <div class="metric-sub">
-                {subtitulo}
-                </div>
+        kpi_card(
+            c2,
+            "Geração Limitada",
+            f"{current['Geracao_Limitada']:.0f} kW",
+            "#16a34a"
+        )
 
-            </div>
-            """, unsafe_allow_html=True)
+        kpi_card(
+            c3,
+            "Geração Cortada",
+            f"{current['Geracao_Cortada']:.0f} kW",
+            "#f97316"
+        )
 
-    # =====================================================
-    # CARDS
-    # =====================================================
+        kpi_card(
+            c4,
+            "Energia da Light",
+            f"{current['Energia_Light']:.0f} kW",
+            "#9333ea"
+        )
 
-    card(
-        col1,
-        "Carga Atual",
-        f"{current['Carga']:.0f} kW",
-        "#2563eb"
-    )
+        # =================================================
+        # STATUS
+        # =================================================
 
-    card(
-        col2,
-        "Geração Limitada",
-        f"{current['Geracao_Limitada']:.0f} kW",
-        "#16a34a"
-    )
+        if current["Geracao_Cortada"] > 0:
 
-    card(
-        col3,
-        "Geração Cortada",
-        f"{current['Geracao_Cortada']:.0f} kW",
-        "#f97316"
-    )
+            status = "GridZero Ativo"
+            sub = "Sem exportação"
+            cor = "#16a34a"
 
-    card(
-        col4,
-        "Energia da Light",
-        f"{current['Energia_Light']:.0f} kW",
-        "#9333ea"
-    )
+        else:
 
-    # =====================================================
-    # STATUS
-    # =====================================================
+            status = "Normal"
+            sub = "Sem limitação"
+            cor = "#64748b"
 
-    if current["Exportando"]:
-
-        status_text = "EXPORTANDO"
-        status_color = "#dc2626"
-
-    elif current["Geracao_Cortada"] > 0:
-
-        status_text = "GridZero Ativo"
-        status_color = "#16a34a"
-
-    else:
-
-        status_text = "Sem Limitação"
-        status_color = "#666"
-
-    card(
-        col5,
-        "Status",
-        status_text,
-        status_color
-    )
+        kpi_card(
+            c5,
+            "Status",
+            status,
+            cor,
+            sub
+        )
 
     # =====================================================
-    # GRAPH
+    # GRÁFICO
     # =====================================================
 
-    st.subheader("Fluxo de Potência")
+    st.markdown("""
+    <div class="section-title">
+    Fluxo de Potência
+    </div>
+    """, unsafe_allow_html=True)
 
     fig = go.Figure()
 
@@ -313,16 +394,16 @@ if generation_file and load_file:
         x=replay_df["DataHora"],
         y=replay_df["Carga"],
 
-        mode='lines',
+        name="Carga",
+
+        mode="lines",
 
         line=dict(
             color="#2563eb",
             width=3,
-            shape='spline',
+            shape="spline",
             smoothing=1.2
-        ),
-
-        name='Carga'
+        )
 
     ))
 
@@ -335,16 +416,16 @@ if generation_file and load_file:
         x=replay_df["DataHora"],
         y=replay_df["Geracao_Limitada"],
 
-        mode='lines',
+        name="Geração Limitada",
+
+        mode="lines",
 
         line=dict(
             color="#16a34a",
             width=3,
-            shape='spline',
+            shape="spline",
             smoothing=1.2
-        ),
-
-        name='Geração Limitada'
+        )
 
     ))
 
@@ -357,17 +438,17 @@ if generation_file and load_file:
         x=replay_df["DataHora"],
         y=replay_df["Geracao_Cortada"],
 
-        mode='lines',
+        name="Geração Cortada",
+
+        mode="lines",
 
         line=dict(
             color="#f97316",
             width=3,
-            dash='dash',
-            shape='spline',
+            dash="dash",
+            shape="spline",
             smoothing=1.2
-        ),
-
-        name='Geração Cortada'
+        )
 
     ))
 
@@ -380,90 +461,21 @@ if generation_file and load_file:
         x=replay_df["DataHora"],
         y=replay_df["Energia_Light"],
 
-        mode='lines',
+        name="Energia Consumida da Light",
+
+        mode="lines",
 
         line=dict(
             color="#9333ea",
             width=3,
-            shape='spline',
+            shape="spline",
             smoothing=1.2
-        ),
-
-        name='Energia Consumida da Light'
-
-    ))
-
-    # =====================================================
-    # EXPORTAÇÃO
-    # =====================================================
-
-    export_df = replay_df[
-        replay_df["Energia_Light"] < 0
-    ]
-
-    fig.add_trace(go.Scatter(
-
-        x=export_df["DataHora"],
-        y=export_df["Energia_Light"],
-
-        mode='markers',
-
-        marker=dict(
-            size=8,
-            color='red'
-        ),
-
-        name='Exportação'
-
-    ))
-
-    # =====================================================
-    # LAYOUT
-    # =====================================================
-
-    fig.update_layout(
-
-        template="plotly_white",
-
-        height=600,
-
-        paper_bgcolor="white",
-
-        plot_bgcolor="white",
-
-        hovermode="x unified",
-
-        font=dict(
-            family="Arial",
-            size=14
-        ),
-
-        xaxis=dict(
-
-            title="Tempo",
-
-            rangeslider=dict(
-                visible=True
-            ),
-
-            type="date"
-
-        ),
-
-        yaxis_title="Potência (kW)",
-
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5
         )
 
-    )
+    ))
 
     # =====================================================
-    # ZERO LINE
+    # LINHA ZERO
     # =====================================================
 
     fig.add_hline(
@@ -476,79 +488,177 @@ if generation_file and load_file:
 
     )
 
+    # =====================================================
+    # LAYOUT
+    # =====================================================
+
+    fig.update_layout(
+
+        height=600,
+
+        template="plotly_white",
+
+        paper_bgcolor="white",
+
+        plot_bgcolor="white",
+
+        hovermode="x unified",
+
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5
+        ),
+
+        margin=dict(
+            l=10,
+            r=10,
+            t=10,
+            b=10
+        ),
+
+        xaxis=dict(
+            title="Tempo",
+            rangeslider=dict(
+                visible=False
+            )
+        ),
+
+        yaxis=dict(
+            title="Potência (kW)",
+            gridcolor="#e5e7eb"
+        )
+
+    )
+
     st.plotly_chart(
         fig,
         use_container_width=True
     )
 
     # =====================================================
-    # STATS
+    # RESUMO
     # =====================================================
 
-    st.subheader("Resumo Operacional")
-
-    total_export = replay_df[
-        replay_df["Energia_Light"] < 0
-    ]["Energia_Light"].abs().sum()
+    c1, c2, c3, c4 = st.columns(4)
 
     total_import = replay_df[
         replay_df["Energia_Light"] > 0
     ]["Energia_Light"].sum()
 
-    max_cut = replay_df[
+    energia_cortada = replay_df[
+        "Geracao_Cortada"
+    ].sum()
+
+    max_corte = replay_df[
         "Geracao_Cortada"
     ].max()
 
-    hours_cut = len(
+    horas_corte = len(
         replay_df[
             replay_df["Geracao_Cortada"] > 0
         ]
     )
 
-    col1, col2, col3, col4 = st.columns(4)
+    def summary(
+        coluna,
+        titulo,
+        valor,
+        cor,
+        sub=""
+    ):
 
-    card(
-        col1,
-        "Energia Importada",
+        with coluna:
+
+            st.markdown(f"""
+            <div class="summary-box">
+
+                <div style="
+                font-size:16px;
+                font-weight:600;
+                color:{cor};
+                ">
+                {titulo}
+                </div>
+
+                <div style="
+                font-size:42px;
+                font-weight:700;
+                color:{cor};
+                margin-top:10px;
+                ">
+                {valor}
+                </div>
+
+                <div style="
+                font-size:14px;
+                color:#7b8190;
+                margin-top:5px;
+                ">
+                {sub}
+                </div>
+
+            </div>
+            """, unsafe_allow_html=True)
+
+    summary(
+        c1,
+        "Energia Importada da Light",
         f"{total_import:.0f} kWh",
-        "#2563eb"
+        "#2563eb",
+        "Total no período"
     )
 
-    card(
-        col2,
-        "Energia Evitada",
-        f"{total_export:.0f} kWh",
-        "#dc2626"
+    summary(
+        c2,
+        "Energia que seria Exportada",
+        f"{energia_cortada:.0f} kWh",
+        "#dc2626",
+        "Evitada pelo GridZero"
     )
 
-    card(
-        col3,
-        "Máx Geração Cortada",
-        f"{max_cut:.0f} kW",
-        "#16a34a"
+    summary(
+        c3,
+        "Máxima Geração Cortada",
+        f"{max_corte:.0f} kW",
+        "#16a34a",
+        "Pico de corte"
     )
 
-    card(
-        col4,
+    summary(
+        c4,
         "Horas com Corte",
-        f"{hours_cut:.0f} h",
-        "#9333ea"
+        f"{horas_corte:.0f} h",
+        "#9333ea",
+        "GridZero ativo"
     )
 
     # =====================================================
-    # TABLE
+    # TABELA
     # =====================================================
 
-    st.subheader("Dados Operacionais")
+    st.markdown("""
+    <br>
+    <div class="section-title">
+    Dados Operacionais
+    </div>
+    """, unsafe_allow_html=True)
+
+    tabela = replay_df.copy()
+
+    tabela = tabela.rename(columns={
+        "Geracao_Limitada": "Geração Limitada (kW)",
+        "Geracao_Cortada": "Geração Cortada (kW)",
+        "Energia_Light": "Energia Consumida da Light (kW)",
+        "Carga": "Carga (kW)"
+    })
 
     st.dataframe(
-
-        replay_df.tail(50),
-
+        tabela.tail(20),
         use_container_width=True,
-
-        height=300
-
+        height=320
     )
 
     # =====================================================
