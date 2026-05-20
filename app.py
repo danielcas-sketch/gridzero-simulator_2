@@ -23,8 +23,9 @@ st.markdown("Simulação dinâmica do controle GridZero")
 
 @dataclass
 class Inverter:
+
     id: int
-    nominal_power: float = 100.0
+    nominal_power: float = 250.0
     current_power: float = 0.0
     online: bool = True
     fallback_mode: bool = False
@@ -35,9 +36,13 @@ class Inverter:
             self.current_power = 0
             return
 
-        target_power = self.nominal_power * target_percent / 100
+        target_power = (
+            self.nominal_power
+            * target_percent
+            / 100
+        )
 
-        ramp_rate = 10
+        ramp_rate = 50
 
         if self.current_power < target_power:
             self.current_power += ramp_rate
@@ -76,7 +81,10 @@ class ASC150:
 
     def total_power(self):
 
-        return sum(inv.current_power for inv in self.inverters)
+        return sum(
+            inv.current_power
+            for inv in self.inverters
+        )
 
 
 class AGC150:
@@ -84,7 +92,8 @@ class AGC150:
     def __init__(self):
 
         self.setpoint_import = 20
-        self.kp = 0.5
+        self.kp = 2.0
+
         self.export_alarm = False
         self.ansi32_trip = False
 
@@ -92,9 +101,9 @@ class AGC150:
 
         p_grid = p_load - p_pv
 
-        error = self.setpoint_import - p_grid
+        error = p_grid - self.setpoint_import
 
-        correction = self.kp * error
+        correction = self.kp * error / 100
 
         return p_grid, correction
 
@@ -118,19 +127,31 @@ if "initialized" not in st.session_state:
 
     st.session_state.initialized = True
 
-    inverters = [Inverter(i + 1) for i in range(24)]
+    inverters = [
+        Inverter(i + 1)
+        for i in range(24)
+    ]
 
     group1 = inverters[0:4]
     group2 = inverters[4:20]
     group3 = inverters[20:24]
 
-    st.session_state.asc1 = ASC150("ASC-150 #1", group1)
-    st.session_state.asc2 = ASC150("ASC-150 #2", group2)
-    st.session_state.asc3 = ASC150("ASC-150 #3", group3)
+    st.session_state.asc1 = ASC150(
+        "ASC-150 #1",
+        group1
+    )
+
+    st.session_state.asc2 = ASC150(
+        "ASC-150 #2",
+        group2
+    )
+
+    st.session_state.asc3 = ASC150(
+        "ASC-150 #3",
+        group3
+    )
 
     st.session_state.agc = AGC150()
-
-    st.session_state.target_percent = 80
 
     st.session_state.history = pd.DataFrame(
         columns=[
@@ -150,15 +171,15 @@ st.sidebar.header("Controles")
 manual_load = st.sidebar.slider(
     "Carga Mercado Livre (kW)",
     500,
-    3000,
-    1800
+    5000,
+    3000
 )
 
 irradiance = st.sidebar.slider(
     "Irradiância Solar (%)",
     0,
     100,
-    80
+    75
 )
 
 simulate_modbus_failure = st.sidebar.checkbox(
@@ -184,28 +205,39 @@ asc3 = st.session_state.asc3
 agc = st.session_state.agc
 
 # ============================================================
-# SIMULAÇÃO
+# CARGA
 # ============================================================
 
 if auto_mode:
 
-    p_load = manual_load + random.randint(-100, 100)
+    p_load = (
+        manual_load
+        + random.randint(-100, 100)
+    )
 
 else:
 
     p_load = manual_load
 
-# potência atual FV
+# ============================================================
+# GERAÇÃO FV
+# ============================================================
+
 p_pv = (
     asc1.total_power()
     + asc2.total_power()
     + asc3.total_power()
 )
 
-# cálculo AGC
-p_grid, correction = agc.calculate(p_load, p_pv)
+# ============================================================
+# CONTROLE GRIDZERO
+# ============================================================
 
-# lógica GridZero
+p_grid, correction = agc.calculate(
+    p_load,
+    p_pv
+)
+
 target = irradiance + correction
 
 if target > 100:
@@ -213,8 +245,6 @@ if target > 100:
 
 if target < 0:
     target = 0
-
-st.session_state.target_percent = target
 
 # ============================================================
 # FALHA MODBUS
@@ -240,7 +270,10 @@ asc1.send_setpoint(target)
 asc2.send_setpoint(target)
 asc3.send_setpoint(target)
 
-# recalcula potência
+# ============================================================
+# RECALCULA
+# ============================================================
+
 p_pv = (
     asc1.total_power()
     + asc2.total_power()
@@ -260,13 +293,12 @@ if simulate_ansi32:
 
 if agc.ansi32_trip:
 
-    for inv in asc1.inverters:
-        inv.online = False
+    for inv in (
+        asc1.inverters
+        + asc2.inverters
+        + asc3.inverters
+    ):
 
-    for inv in asc2.inverters:
-        inv.online = False
-
-    for inv in asc3.inverters:
         inv.online = False
 
     p_pv = 0
@@ -277,33 +309,43 @@ if agc.ansi32_trip:
 # ============================================================
 
 new_row = pd.DataFrame({
+
     "time": [pd.Timestamp.now()],
     "load": [p_load],
     "pv": [p_pv],
     "grid": [p_grid]
+
 })
 
 st.session_state.history = pd.concat(
-    [st.session_state.history, new_row],
+    [
+        st.session_state.history,
+        new_row
+    ],
     ignore_index=True
 )
 
-if len(st.session_state.history) > 50:
-    st.session_state.history = st.session_state.history.iloc[-50:]
+if len(st.session_state.history) > 100:
+
+    st.session_state.history = (
+        st.session_state.history.iloc[-100:]
+    )
 
 # ============================================================
-# STATUS PRINCIPAL
+# KPIs
 # ============================================================
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
+
     st.metric(
         "Carga Mercado Livre",
         f"{p_load:.0f} kW"
     )
 
 with col2:
+
     st.metric(
         "Geração FV",
         f"{p_pv:.0f} kW"
@@ -356,61 +398,97 @@ st.subheader("Fluxo de Potência")
 fig = go.Figure()
 
 fig.add_trace(go.Scatter(
+
     x=st.session_state.history["time"],
     y=st.session_state.history["load"],
     mode='lines',
     name='Carga'
+
 ))
 
 fig.add_trace(go.Scatter(
+
     x=st.session_state.history["time"],
     y=st.session_state.history["pv"],
     mode='lines',
     name='Geração FV'
+
 ))
 
 fig.add_trace(go.Scatter(
+
     x=st.session_state.history["time"],
     y=st.session_state.history["grid"],
     mode='lines',
     name='Rede'
+
 ))
 
 fig.update_layout(
+
     height=500,
     xaxis_title="Tempo",
     yaxis_title="Potência (kW)"
+
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
 
 # ============================================================
-# TABELA INVERSORES
+# INVERSORES
 # ============================================================
 
 st.subheader("Estado dos Inversores")
 
-inv_data = []
-
-for inv in (
+all_inverters = (
     asc1.inverters
     + asc2.inverters
     + asc3.inverters
-):
-
-    inv_data.append({
-        "Inversor": f"INV-{inv.id:02d}",
-        "Potência (kW)": round(inv.current_power, 1),
-        "Online": inv.online,
-        "Fallback": inv.fallback_mode
-    })
-
-df_inv = pd.DataFrame(inv_data)
-
-st.dataframe(
-    df_inv,
-    use_container_width=True
 )
+
+for inv in all_inverters:
+
+    col1, col2, col3, col4, col5 = st.columns([2,2,2,2,2])
+
+    with col1:
+
+        st.write(
+            f"### INV-{inv.id:02d}"
+        )
+
+    with col2:
+
+        st.metric(
+            "Potência",
+            f"{inv.current_power:.1f} kW"
+        )
+
+    with col3:
+
+        if inv.online:
+            st.success("🟢 ONLINE")
+        else:
+            st.error("🔴 OFFLINE")
+
+    with col4:
+
+        if inv.fallback_mode:
+            st.warning("🟡 FALLBACK")
+        else:
+            st.success("🟢 NORMAL")
+
+    with col5:
+
+        new_state = st.toggle(
+            f"Ligado {inv.id}",
+            value=inv.online,
+            key=f"toggle_{inv.id}"
+        )
+
+        inv.online = new_state
 
 # ============================================================
 # ALARMES
@@ -419,16 +497,19 @@ st.dataframe(
 st.subheader("Alarmes e Eventos")
 
 if agc.export_alarm:
+
     st.warning(
         "⚠ Exportação detectada — AGC reduzindo geração"
     )
 
 if simulate_modbus_failure:
+
     st.error(
         "❌ Falha comunicação Modbus — inversores em fallback"
     )
 
 if agc.ansi32_trip:
+
     st.error(
         "🚨 ANSI 32 ATUADO — disjuntor geral aberto"
     )
@@ -437,5 +518,5 @@ if agc.ansi32_trip:
 # AUTO REFRESH
 # ============================================================
 
-time.sleep(0.5)
+time.sleep(0.1)
 st.rerun()
