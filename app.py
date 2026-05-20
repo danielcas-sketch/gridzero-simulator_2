@@ -53,8 +53,8 @@ class Inverter:
         if self.current_power < 0:
             self.current_power = 0
 
-        if self.current_power > self.nominal_power:
-            self.current_power = self.nominal_power
+        if self.current_power > target_power:
+            self.current_power = target_power
 
 
 class ASC150:
@@ -126,6 +126,10 @@ class AGC150:
 if "initialized" not in st.session_state:
 
     st.session_state.initialized = True
+
+    st.session_state.sim_time = pd.Timestamp(
+        "2026-01-01 08:00:00"
+    )
 
     inverters = [
         Inverter(i + 1)
@@ -205,19 +209,50 @@ asc3 = st.session_state.asc3
 agc = st.session_state.agc
 
 # ============================================================
-# CARGA
+# PERFIL AUTOMÁTICO DE CARGA
 # ============================================================
+
+hour = st.session_state.sim_time.hour
 
 if auto_mode:
 
-    p_load = (
-        manual_load
-        + random.randint(-100, 100)
-    )
+    if hour < 6:
+        base_load = 1200
+
+    elif hour < 9:
+        base_load = 2500
+
+    elif hour < 18:
+        base_load = 3200
+
+    elif hour < 22:
+        base_load = 2800
+
+    else:
+        base_load = 1800
+
+    p_load = base_load + random.randint(-100, 100)
 
 else:
 
     p_load = manual_load
+
+# ============================================================
+# PERFIL SOLAR
+# ============================================================
+
+solar_factor = max(
+    0,
+    (
+        -abs(hour - 12)
+        + 6
+    ) / 6
+)
+
+dynamic_irradiance = (
+    irradiance
+    * solar_factor
+)
 
 # ============================================================
 # GERAÇÃO FV
@@ -238,7 +273,7 @@ p_grid, correction = agc.calculate(
     p_pv
 )
 
-target = irradiance + correction
+target = dynamic_irradiance + correction
 
 if target > 100:
     target = 100
@@ -310,7 +345,7 @@ if agc.ansi32_trip:
 
 new_row = pd.DataFrame({
 
-    "time": [pd.Timestamp.now()],
+    "time": [st.session_state.sim_time],
     "load": [p_load],
     "pv": [p_pv],
     "grid": [p_grid]
@@ -334,6 +369,11 @@ if len(st.session_state.history) > 100:
 # ============================================================
 # KPIs
 # ============================================================
+
+st.subheader(
+    f"🕒 Horário Simulado: "
+    f"{st.session_state.sim_time.strftime('%d/%m/%Y %H:%M')}"
+)
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -515,8 +555,17 @@ if agc.ansi32_trip:
     )
 
 # ============================================================
+# AVANÇO DO TEMPO
+# ============================================================
+
+st.session_state.sim_time += pd.Timedelta(
+    minutes=30
+)
+
+# ============================================================
 # AUTO REFRESH
 # ============================================================
 
-time.sleep(0.1)
+time.sleep(0.2)
+
 st.rerun()
