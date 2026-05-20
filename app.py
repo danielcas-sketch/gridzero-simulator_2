@@ -2,176 +2,26 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import time
-import random
-import math
-from dataclasses import dataclass
 
 # ============================================================
-# CONFIGURAÇÃO DA PÁGINA
+# CONFIGURAÇÃO
 # ============================================================
 
 st.set_page_config(
-    page_title="GridZero Simulator",
+    page_title="GridZero Replay Simulator",
     layout="wide"
 )
 
-st.title("⚡ GridZero Simulator — DEIF + SolarEdge")
-st.markdown("Simulação dinâmica do controle GridZero")
+st.title("⚡ GridZero Replay Simulator")
+st.markdown(
+    """
+Simulador GridZero utilizando dados REAIS de:
+- geração fotovoltaica
+- consumo da carga
 
-# ============================================================
-# CLASSES
-# ============================================================
-
-@dataclass
-class Inverter:
-
-    id: int
-    nominal_power: float = 250.0
-    current_power: float = 0.0
-    online: bool = True
-    fallback_mode: bool = False
-
-    def update(self, target_percent):
-
-        if not self.online:
-            self.current_power = 0
-            return
-
-        target_power = (
-            self.nominal_power
-            * target_percent
-            / 100
-        )
-
-        # RAMPA SUAVE
-        ramp_rate = 4
-
-        if self.current_power < target_power:
-
-            self.current_power += ramp_rate
-
-            if self.current_power > target_power:
-                self.current_power = target_power
-
-        elif self.current_power > target_power:
-
-            self.current_power -= ramp_rate
-
-            if self.current_power < target_power:
-                self.current_power = target_power
-
-        if self.current_power < 0:
-            self.current_power = 0
-
-
-class ASC150:
-
-    def __init__(self, name, inverter_group):
-
-        self.name = name
-        self.inverters = inverter_group
-        self.communication_ok = True
-
-    def send_setpoint(self, percent):
-
-        if not self.communication_ok:
-
-            for inv in self.inverters:
-                inv.fallback_mode = True
-                inv.update(0)
-
-            return
-
-        for inv in self.inverters:
-            inv.fallback_mode = False
-            inv.update(percent)
-
-    def total_power(self):
-
-        return sum(
-            inv.current_power
-            for inv in self.inverters
-        )
-
-
-class AGC150:
-
-    def __init__(self):
-
-        self.setpoint_import = 20
-        self.kp = 0.5
-
-        self.export_alarm = False
-        self.ansi32_trip = False
-
-    def calculate(self, p_load, p_pv):
-
-        p_grid = p_load - p_pv
-
-        error = p_grid - self.setpoint_import
-
-        correction = self.kp * error / 100
-
-        return p_grid, correction
-
-    def protection_logic(self, p_grid):
-
-        self.export_alarm = False
-        self.ansi32_trip = False
-
-        if p_grid < 0:
-            self.export_alarm = True
-
-        if p_grid < -100:
-            self.ansi32_trip = True
-
-
-# ============================================================
-# INICIALIZAÇÃO
-# ============================================================
-
-if "initialized" not in st.session_state:
-
-    st.session_state.initialized = True
-
-    st.session_state.sim_time = pd.Timestamp(
-        "2026-01-01 00:00:00"
-    )
-
-    inverters = [
-        Inverter(i + 1)
-        for i in range(24)
-    ]
-
-    group1 = inverters[0:4]
-    group2 = inverters[4:20]
-    group3 = inverters[20:24]
-
-    st.session_state.asc1 = ASC150(
-        "ASC-150 #1",
-        group1
-    )
-
-    st.session_state.asc2 = ASC150(
-        "ASC-150 #2",
-        group2
-    )
-
-    st.session_state.asc3 = ASC150(
-        "ASC-150 #3",
-        group3
-    )
-
-    st.session_state.agc = AGC150()
-
-    st.session_state.history = pd.DataFrame(
-        columns=[
-            "time",
-            "load",
-            "pv",
-            "grid"
-        ]
-    )
+Faça upload dos CSVs e reproduza a operação da planta.
+"""
+)
 
 # ============================================================
 # SIDEBAR
@@ -179,445 +29,365 @@ if "initialized" not in st.session_state:
 
 st.sidebar.header("Controles")
 
-manual_load = st.sidebar.slider(
-    "Carga Mercado Livre (kW)",
-    500,
-    5000,
-    3000
-)
-
-irradiance = st.sidebar.slider(
-    "Irradiância Solar (%)",
-    0,
-    100,
-    90
-)
-
-simulate_modbus_failure = st.sidebar.checkbox(
-    "Falha comunicação Modbus"
-)
-
-simulate_ansi32 = st.sidebar.checkbox(
-    "Forçar ANSI 32"
-)
-
-auto_mode = st.sidebar.checkbox(
-    "Modo Automático",
-    value=True
-)
-
 run_simulation = st.sidebar.toggle(
-    "▶ Simulação Rodando",
-    value=True
+    "▶ Rodando Replay",
+    value=False
+)
+
+speed = st.sidebar.slider(
+    "Velocidade Replay",
+    0.1,
+    2.0,
+    0.5,
+    0.1
 )
 
 # ============================================================
-# REFERÊNCIAS
+# UPLOADS
 # ============================================================
 
-asc1 = st.session_state.asc1
-asc2 = st.session_state.asc2
-asc3 = st.session_state.asc3
-agc = st.session_state.agc
+st.subheader("Upload dos Arquivos CSV")
 
-# ============================================================
-# TEMPO DECIMAL
-# ============================================================
-
-hour_decimal = (
-    st.session_state.sim_time.hour
-    +
-    st.session_state.sim_time.minute / 60
-)
-
-# ============================================================
-# PERFIL AUTOMÁTICO DE CARGA SUAVE
-# ============================================================
-
-if auto_mode:
-
-    base_load = (
-        2200
-        +
-        900 * math.sin(
-            (
-                hour_decimal - 7
-            )
-            * math.pi
-            / 12
-        )
-    )
-
-    p_load = (
-        base_load
-        +
-        random.uniform(-15, 15)
-    )
-
-else:
-
-    p_load = manual_load
-
-# ============================================================
-# PERFIL SOLAR SUAVE
-# ============================================================
-
-solar_factor = max(
-    0,
-    math.sin(
-        math.pi
-        *
-        (hour_decimal - 6)
-        / 12
-    )
-)
-
-dynamic_irradiance = (
-    irradiance
-    * solar_factor
-)
-
-# ============================================================
-# GERAÇÃO FV
-# ============================================================
-
-p_pv = (
-    asc1.total_power()
-    + asc2.total_power()
-    + asc3.total_power()
-)
-
-# ============================================================
-# CONTROLE GRIDZERO
-# ============================================================
-
-p_grid, correction = agc.calculate(
-    p_load,
-    p_pv
-)
-
-target = dynamic_irradiance + correction
-
-if target > 100:
-    target = 100
-
-if target < 0:
-    target = 0
-
-# ============================================================
-# MODBUS
-# ============================================================
-
-if simulate_modbus_failure:
-
-    asc1.communication_ok = False
-    asc2.communication_ok = False
-    asc3.communication_ok = False
-
-else:
-
-    asc1.communication_ok = True
-    asc2.communication_ok = True
-    asc3.communication_ok = True
-
-# ============================================================
-# ENVIO SETPOINT
-# ============================================================
-
-asc1.send_setpoint(target)
-asc2.send_setpoint(target)
-asc3.send_setpoint(target)
-
-# ============================================================
-# RECÁLCULO
-# ============================================================
-
-p_pv = (
-    asc1.total_power()
-    + asc2.total_power()
-    + asc3.total_power()
-)
-
-p_grid = p_load - p_pv
-
-# ============================================================
-# PROTEÇÕES
-# ============================================================
-
-agc.protection_logic(p_grid)
-
-if simulate_ansi32:
-    agc.ansi32_trip = True
-
-if agc.ansi32_trip:
-
-    for inv in (
-        asc1.inverters
-        + asc2.inverters
-        + asc3.inverters
-    ):
-
-        inv.online = False
-
-    p_pv = 0
-    p_grid = p_load
-
-# ============================================================
-# HISTÓRICO
-# ============================================================
-
-new_row = pd.DataFrame({
-
-    "time": [st.session_state.sim_time],
-    "load": [p_load],
-    "pv": [p_pv],
-    "grid": [p_grid]
-
-})
-
-st.session_state.history = pd.concat(
-    [
-        st.session_state.history,
-        new_row
-    ],
-    ignore_index=True
-)
-
-if len(st.session_state.history) > 500:
-
-    st.session_state.history = (
-        st.session_state.history.iloc[-500:]
-    )
-
-# ============================================================
-# KPIs
-# ============================================================
-
-st.subheader(
-    f"🕒 Horário Simulado: "
-    f"{st.session_state.sim_time.strftime('%d/%m/%Y %H:%M')}"
-)
-
-col1, col2, col3, col4 = st.columns(4)
+col1, col2 = st.columns(2)
 
 with col1:
 
-    st.metric(
-        "Carga Mercado Livre",
-        f"{p_load:.0f} kW"
+    generation_file = st.file_uploader(
+        "CSV de Geração FV",
+        type=["csv"]
     )
 
 with col2:
 
-    st.metric(
-        "Geração FV",
-        f"{p_pv:.0f} kW"
+    load_file = st.file_uploader(
+        "CSV de Consumo/Carga",
+        type=["csv"]
     )
 
-with col3:
+# ============================================================
+# MODELO CSV
+# ============================================================
 
-    st.metric(
-        "Potência Rede",
-        f"{p_grid:.0f} kW"
+with st.expander("📄 Modelo esperado dos CSVs"):
+
+    st.code(
+        """
+DataHora,Potencia
+2026-01-01 00:00,0
+2026-01-01 01:00,0
+2026-01-01 02:00,0
+2026-01-01 12:00,3200
+        """
     )
 
-with col4:
-
-    if agc.ansi32_trip:
-        st.error("ANSI 32 TRIP")
-
-    elif agc.export_alarm:
-        st.warning("EXPORTAÇÃO")
-
-    else:
-        st.success("GRIDZERO OK")
-
 # ============================================================
-# DIAGRAMA
+# PROCESSAMENTO
 # ============================================================
 
-st.subheader("Arquitetura do Sistema")
+if generation_file and load_file:
 
-diagram = f"""
-LIGHT 13.8 kV
-│
-├── Potência Rede: {p_grid:.0f} kW
-│
-└── AGC-150 MAINS
-    │
-    ├── ASC-150 #1 → TR-05 → 4 Inversores
-    ├── ASC-150 #2 → TR-07 → 16 Inversores
-    └── ASC-150 #3 → TR-08 → 4 Inversores
-"""
+    # ========================================================
+    # LEITURA CSV
+    # ========================================================
 
-st.text(diagram)
+    gen_df = pd.read_csv(generation_file)
+    load_df = pd.read_csv(load_file)
 
-# ============================================================
-# GRÁFICOS
-# ============================================================
+    # ========================================================
+    # RENOMEIA COLUNAS
+    # ========================================================
 
-st.subheader("Fluxo de Potência")
+    gen_df.columns = ["DataHora", "Geracao"]
+    load_df.columns = ["DataHora", "Carga"]
 
-fig = go.Figure()
+    # ========================================================
+    # DATETIME
+    # ========================================================
 
-fig.add_trace(go.Scatter(
+    gen_df["DataHora"] = pd.to_datetime(
+        gen_df["DataHora"]
+    )
 
-    x=st.session_state.history["time"],
-    y=st.session_state.history["load"],
-    mode='lines',
-    line=dict(
-        shape='spline',
-        smoothing=1.2
-    ),
-    name='Carga'
+    load_df["DataHora"] = pd.to_datetime(
+        load_df["DataHora"]
+    )
 
-))
+    # ========================================================
+    # MERGE
+    # ========================================================
 
-fig.add_trace(go.Scatter(
+    df = pd.merge(
+        gen_df,
+        load_df,
+        on="DataHora"
+    )
 
-    x=st.session_state.history["time"],
-    y=st.session_state.history["pv"],
-    mode='lines',
-    line=dict(
-        shape='spline',
-        smoothing=1.2
-    ),
-    name='Geração FV'
+    # ========================================================
+    # GRID
+    # ========================================================
 
-))
+    df["Rede"] = (
+        df["Carga"]
+        - df["Geracao"]
+    )
 
-fig.add_trace(go.Scatter(
+    # ========================================================
+    # EXPORTAÇÃO
+    # ========================================================
 
-    x=st.session_state.history["time"],
-    y=st.session_state.history["grid"],
-    mode='lines',
-    line=dict(
-        shape='spline',
-        smoothing=1.2
-    ),
-    name='Rede'
+    df["Exportando"] = (
+        df["Rede"] < 0
+    )
 
-))
+    # ========================================================
+    # SESSION STATE
+    # ========================================================
 
-fig.update_layout(
+    if "index" not in st.session_state:
 
-    height=550,
+        st.session_state.index = 0
 
-    xaxis=dict(
+    # ========================================================
+    # RESET
+    # ========================================================
 
-        title="Tempo",
+    if st.button("🔄 Reiniciar Replay"):
 
-        rangeslider=dict(
-            visible=True
-        ),
+        st.session_state.index = 0
 
-        type="date"
-    ),
+    # ========================================================
+    # PLAYBACK
+    # ========================================================
 
-    yaxis_title="Potência (kW)",
+    current_index = st.session_state.index
 
-    hovermode="x unified"
+    if current_index >= len(df):
 
-)
+        current_index = len(df) - 1
 
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
+    replay_df = df.iloc[:current_index + 1]
 
-# ============================================================
-# INVERSORES
-# ============================================================
+    current = df.iloc[current_index]
 
-st.subheader("Estado dos Inversores")
+    # ========================================================
+    # KPIs
+    # ========================================================
 
-all_inverters = (
-    asc1.inverters
-    + asc2.inverters
-    + asc3.inverters
-)
+    st.subheader(
+        f"🕒 {current['DataHora']}"
+    )
 
-for inv in all_inverters:
-
-    col1, col2, col3, col4, col5 = st.columns([2,2,2,2,2])
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
 
-        st.write(
-            f"### INV-{inv.id:02d}"
+        st.metric(
+            "Carga",
+            f"{current['Carga']:.0f} kW"
         )
 
     with col2:
 
         st.metric(
-            "Potência",
-            f"{inv.current_power:.1f} kW"
+            "Geração FV",
+            f"{current['Geracao']:.0f} kW"
         )
 
     with col3:
 
-        if inv.online:
-            st.success("🟢 ONLINE")
-        else:
-            st.error("🔴 OFFLINE")
+        st.metric(
+            "Potência Rede",
+            f"{current['Rede']:.0f} kW"
+        )
 
     with col4:
 
-        if inv.fallback_mode:
-            st.warning("🟡 FALLBACK")
+        if current["Exportando"]:
+
+            st.error("EXPORTANDO")
+
         else:
-            st.success("🟢 NORMAL")
 
-    with col5:
+            st.success("GRIDZERO")
 
-        new_state = st.toggle(
-            f"Ligado {inv.id}",
-            value=inv.online,
-            key=f"toggle_{inv.id}"
+    # ========================================================
+    # GRÁFICO
+    # ========================================================
+
+    st.subheader("Fluxo de Potência")
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+
+        x=replay_df["DataHora"],
+        y=replay_df["Carga"],
+
+        mode='lines',
+
+        line=dict(
+            shape='spline',
+            smoothing=1.2
+        ),
+
+        name='Carga'
+
+    ))
+
+    fig.add_trace(go.Scatter(
+
+        x=replay_df["DataHora"],
+        y=replay_df["Geracao"],
+
+        mode='lines',
+
+        line=dict(
+            shape='spline',
+            smoothing=1.2
+        ),
+
+        name='Geração FV'
+
+    ))
+
+    fig.add_trace(go.Scatter(
+
+        x=replay_df["DataHora"],
+        y=replay_df["Rede"],
+
+        mode='lines',
+
+        line=dict(
+            shape='spline',
+            smoothing=1.2
+        ),
+
+        name='Rede'
+
+    ))
+
+    # ========================================================
+    # EXPORTAÇÃO DESTACADA
+    # ========================================================
+
+    export_df = replay_df[
+        replay_df["Rede"] < 0
+    ]
+
+    fig.add_trace(go.Scatter(
+
+        x=export_df["DataHora"],
+        y=export_df["Rede"],
+
+        mode='markers',
+
+        marker=dict(
+            size=8,
+            color='red'
+        ),
+
+        name='Exportação'
+
+    ))
+
+    # ========================================================
+    # LAYOUT
+    # ========================================================
+
+    fig.update_layout(
+
+        height=600,
+
+        xaxis=dict(
+
+            title="Tempo",
+
+            rangeslider=dict(
+                visible=True
+            ),
+
+            type="date"
+        ),
+
+        yaxis_title="Potência (kW)",
+
+        hovermode="x unified"
+
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+    # ========================================================
+    # ESTATÍSTICAS
+    # ========================================================
+
+    st.subheader("Resumo Operacional")
+
+    total_export = abs(
+        replay_df[
+            replay_df["Rede"] < 0
+        ]["Rede"].sum()
+    )
+
+    max_export = replay_df["Rede"].min()
+
+    total_import = replay_df[
+        replay_df["Rede"] > 0
+    ]["Rede"].sum()
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Energia Exportada",
+            f"{total_export:.0f} kWh"
         )
 
-        inv.online = new_state
+    with col2:
 
-# ============================================================
-# ALARMES
-# ============================================================
+        st.metric(
+            "Máx Exportação",
+            f"{max_export:.0f} kW"
+        )
 
-st.subheader("Alarmes e Eventos")
+    with col3:
 
-if agc.export_alarm:
+        st.metric(
+            "Energia Importada",
+            f"{total_import:.0f} kWh"
+        )
 
-    st.warning(
-        "⚠ Exportação detectada — AGC reduzindo geração"
+    # ========================================================
+    # TABELA
+    # ========================================================
+
+    st.subheader("Dados Operacionais")
+
+    st.dataframe(
+        replay_df.tail(50),
+        use_container_width=True
     )
 
-if simulate_modbus_failure:
+    # ========================================================
+    # AUTO PLAY
+    # ========================================================
 
-    st.error(
-        "❌ Falha comunicação Modbus — inversores em fallback"
+    if run_simulation:
+
+        if st.session_state.index < len(df) - 1:
+
+            st.session_state.index += 1
+
+            time.sleep(speed)
+
+            st.rerun()
+
+else:
+
+    st.info(
+        "Faça upload dos dois arquivos CSV para iniciar o replay."
     )
-
-if agc.ansi32_trip:
-
-    st.error(
-        "🚨 ANSI 32 ATUADO — disjuntor geral aberto"
-    )
-
-# ============================================================
-# AVANÇO DO TEMPO
-# ============================================================
-
-if run_simulation:
-
-    st.session_state.sim_time += pd.Timedelta(
-        hours=1
-    )
-
-# ============================================================
-# AUTO REFRESH
-# ============================================================
-
-if run_simulation:
-
-    time.sleep(0.5)
-
-    st.rerun()
