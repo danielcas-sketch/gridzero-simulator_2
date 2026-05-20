@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 import random
+import math
 from dataclasses import dataclass
 
 # ============================================================
@@ -42,20 +43,25 @@ class Inverter:
             / 100
         )
 
-        # resposta mais suave
-        ramp_rate = 10
+        # RAMPA SUAVE
+        ramp_rate = 4
 
         if self.current_power < target_power:
+
             self.current_power += ramp_rate
 
+            if self.current_power > target_power:
+                self.current_power = target_power
+
         elif self.current_power > target_power:
+
             self.current_power -= ramp_rate
+
+            if self.current_power < target_power:
+                self.current_power = target_power
 
         if self.current_power < 0:
             self.current_power = 0
-
-        if self.current_power > target_power:
-            self.current_power = target_power
 
 
 class ASC150:
@@ -93,7 +99,7 @@ class AGC150:
     def __init__(self):
 
         self.setpoint_import = 20
-        self.kp = 1.0
+        self.kp = 0.5
 
         self.export_alarm = False
         self.ansi32_trip = False
@@ -129,7 +135,7 @@ if "initialized" not in st.session_state:
     st.session_state.initialized = True
 
     st.session_state.sim_time = pd.Timestamp(
-        "2026-01-01 08:00:00"
+        "2026-01-01 00:00:00"
     )
 
     inverters = [
@@ -184,7 +190,7 @@ irradiance = st.sidebar.slider(
     "Irradiância Solar (%)",
     0,
     100,
-    75
+    90
 )
 
 simulate_modbus_failure = st.sidebar.checkbox(
@@ -200,7 +206,6 @@ auto_mode = st.sidebar.checkbox(
     value=True
 )
 
-# PLAY / STOP
 run_simulation = st.sidebar.toggle(
     "▶ Simulação Rodando",
     value=True
@@ -216,45 +221,55 @@ asc3 = st.session_state.asc3
 agc = st.session_state.agc
 
 # ============================================================
-# PERFIL AUTOMÁTICO DE CARGA
+# TEMPO DECIMAL
 # ============================================================
 
-hour = st.session_state.sim_time.hour
+hour_decimal = (
+    st.session_state.sim_time.hour
+    +
+    st.session_state.sim_time.minute / 60
+)
+
+# ============================================================
+# PERFIL AUTOMÁTICO DE CARGA SUAVE
+# ============================================================
 
 if auto_mode:
 
-    if hour < 6:
-        base_load = 1200
+    base_load = (
+        2200
+        +
+        900 * math.sin(
+            (
+                hour_decimal - 7
+            )
+            * math.pi
+            / 12
+        )
+    )
 
-    elif hour < 9:
-        base_load = 2500
-
-    elif hour < 18:
-        base_load = 3200
-
-    elif hour < 22:
-        base_load = 2800
-
-    else:
-        base_load = 1800
-
-    # ruído reduzido
-    p_load = base_load + random.randint(-20, 20)
+    p_load = (
+        base_load
+        +
+        random.uniform(-15, 15)
+    )
 
 else:
 
     p_load = manual_load
 
 # ============================================================
-# PERFIL SOLAR
+# PERFIL SOLAR SUAVE
 # ============================================================
 
 solar_factor = max(
     0,
-    (
-        -abs(hour - 12)
-        + 6
-    ) / 6
+    math.sin(
+        math.pi
+        *
+        (hour_decimal - 6)
+        / 12
+    )
 )
 
 dynamic_irradiance = (
@@ -290,7 +305,7 @@ if target < 0:
     target = 0
 
 # ============================================================
-# FALHA MODBUS
+# MODBUS
 # ============================================================
 
 if simulate_modbus_failure:
@@ -306,7 +321,7 @@ else:
     asc3.communication_ok = True
 
 # ============================================================
-# ENVIO SETPOINTS
+# ENVIO SETPOINT
 # ============================================================
 
 asc1.send_setpoint(target)
@@ -314,7 +329,7 @@ asc2.send_setpoint(target)
 asc3.send_setpoint(target)
 
 # ============================================================
-# RECALCULA
+# RECÁLCULO
 # ============================================================
 
 p_pv = (
@@ -368,10 +383,10 @@ st.session_state.history = pd.concat(
     ignore_index=True
 )
 
-if len(st.session_state.history) > 300:
+if len(st.session_state.history) > 500:
 
     st.session_state.history = (
-        st.session_state.history.iloc[-300:]
+        st.session_state.history.iloc[-500:]
     )
 
 # ============================================================
@@ -450,6 +465,10 @@ fig.add_trace(go.Scatter(
     x=st.session_state.history["time"],
     y=st.session_state.history["load"],
     mode='lines',
+    line=dict(
+        shape='spline',
+        smoothing=1.2
+    ),
     name='Carga'
 
 ))
@@ -459,6 +478,10 @@ fig.add_trace(go.Scatter(
     x=st.session_state.history["time"],
     y=st.session_state.history["pv"],
     mode='lines',
+    line=dict(
+        shape='spline',
+        smoothing=1.2
+    ),
     name='Geração FV'
 
 ))
@@ -468,19 +491,26 @@ fig.add_trace(go.Scatter(
     x=st.session_state.history["time"],
     y=st.session_state.history["grid"],
     mode='lines',
+    line=dict(
+        shape='spline',
+        smoothing=1.2
+    ),
     name='Rede'
 
 ))
 
 fig.update_layout(
 
-    height=500,
+    height=550,
 
     xaxis=dict(
+
         title="Tempo",
+
         rangeslider=dict(
             visible=True
         ),
+
         type="date"
     ),
 
@@ -579,7 +609,7 @@ if agc.ansi32_trip:
 if run_simulation:
 
     st.session_state.sim_time += pd.Timedelta(
-        minutes=30
+        hours=1
     )
 
 # ============================================================
