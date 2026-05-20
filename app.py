@@ -19,11 +19,7 @@ Simulador GridZero utilizando dados REAIS de:
 - geração fotovoltaica
 - consumo da carga
 
-O sistema reproduz:
-- geração potencial da usina
-- limitação GridZero
-- potência da rede
-- exportação evitada pelo AGC-150
+Faça upload dos CSVs e reproduza a operação da planta.
 """
 )
 
@@ -127,33 +123,7 @@ if generation_file and load_file:
     )
 
     # ========================================================
-    # GERAÇÃO POTENCIAL
-    # ========================================================
-
-    df["Geracao_Potencial"] = df["Geracao"]
-
-    # ========================================================
-    # GRIDZERO
-    # ========================================================
-
-    df["Geracao"] = df[
-        [
-            "Geracao_Potencial",
-            "Carga"
-        ]
-    ].min(axis=1)
-
-    # ========================================================
-    # CURTAILMENT
-    # ========================================================
-
-    df["Curtailment"] = (
-        df["Geracao_Potencial"]
-        - df["Geracao"]
-    )
-
-    # ========================================================
-    # REDE
+    # GRID
     # ========================================================
 
     df["Rede"] = (
@@ -207,7 +177,7 @@ if generation_file and load_file:
         f"🕒 {current['DataHora']}"
     )
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
 
@@ -219,46 +189,26 @@ if generation_file and load_file:
     with col2:
 
         st.metric(
-            "Geração Real",
+            "Geração FV",
             f"{current['Geracao']:.0f} kW"
         )
 
     with col3:
 
         st.metric(
-            "Geração Potencial",
-            f"{current['Geracao_Potencial']:.0f} kW"
-        )
-
-    with col4:
-
-        st.metric(
             "Potência Rede",
             f"{current['Rede']:.0f} kW"
         )
 
-    with col5:
+    with col4:
 
-        st.metric(
-            "Curtailment",
-            f"{current['Curtailment']:.0f} kW"
-        )
+        if current["Exportando"]:
 
-    # ========================================================
-    # STATUS GRIDZERO
-    # ========================================================
+            st.error("EXPORTANDO")
 
-    if current["Curtailment"] > 0:
+        else:
 
-        st.warning(
-            "⚠ GridZero ativo — geração limitada para evitar exportação"
-        )
-
-    else:
-
-        st.success(
-            "✅ Operação normal — sem limitação"
-        )
+            st.success("GRIDZERO")
 
     # ========================================================
     # GRÁFICO
@@ -267,10 +217,6 @@ if generation_file and load_file:
     st.subheader("Fluxo de Potência")
 
     fig = go.Figure()
-
-    # ========================================================
-    # CARGA
-    # ========================================================
 
     fig.add_trace(go.Scatter(
 
@@ -281,17 +227,12 @@ if generation_file and load_file:
 
         line=dict(
             shape='spline',
-            smoothing=1.2,
-            width=4
+            smoothing=1.2
         ),
 
         name='Carga'
 
     ))
-
-    # ========================================================
-    # GERAÇÃO REAL
-    # ========================================================
 
     fig.add_trace(go.Scatter(
 
@@ -302,37 +243,12 @@ if generation_file and load_file:
 
         line=dict(
             shape='spline',
-            smoothing=1.2,
-            width=4
+            smoothing=1.2
         ),
 
-        name='Geração Real'
+        name='Geração FV'
 
     ))
-
-    # ========================================================
-    # GERAÇÃO POTENCIAL
-    # ========================================================
-
-    fig.add_trace(go.Scatter(
-
-        x=replay_df["DataHora"],
-        y=replay_df["Geracao_Potencial"],
-
-        mode='lines',
-
-        line=dict(
-            dash='dot',
-            width=3
-        ),
-
-        name='Geração Potencial'
-
-    ))
-
-    # ========================================================
-    # REDE
-    # ========================================================
 
     fig.add_trace(go.Scatter(
 
@@ -343,8 +259,7 @@ if generation_file and load_file:
 
         line=dict(
             shape='spline',
-            smoothing=1.2,
-            width=4
+            smoothing=1.2
         ),
 
         name='Rede'
@@ -356,13 +271,13 @@ if generation_file and load_file:
     # ========================================================
 
     export_df = replay_df[
-        replay_df["Curtailment"] > 0
+        replay_df["Rede"] < 0
     ]
 
     fig.add_trace(go.Scatter(
 
         x=export_df["DataHora"],
-        y=export_df["Geracao_Potencial"],
+        y=export_df["Rede"],
 
         mode='markers',
 
@@ -371,38 +286,17 @@ if generation_file and load_file:
             color='red'
         ),
 
-        name='GridZero Ativo'
+        name='Exportação'
 
     ))
 
     # ========================================================
-    # LINHA ZERO
+    # LAYOUT
     # ========================================================
 
     fig.update_layout(
 
-        height=650,
-
-        shapes=[
-
-            dict(
-
-                type="line",
-
-                x0=replay_df["DataHora"].min(),
-                x1=replay_df["DataHora"].max(),
-
-                y0=0,
-                y1=0,
-
-                line=dict(
-                    color="black",
-                    width=4
-                )
-
-            )
-
-        ],
+        height=600,
 
         xaxis=dict(
 
@@ -432,13 +326,13 @@ if generation_file and load_file:
 
     st.subheader("Resumo Operacional")
 
-    total_curtailment = replay_df[
-        "Curtailment"
-    ].sum()
+    total_export = abs(
+        replay_df[
+            replay_df["Rede"] < 0
+        ]["Rede"].sum()
+    )
 
-    max_curtailment = replay_df[
-        "Curtailment"
-    ].max()
+    max_export = replay_df["Rede"].min()
 
     total_import = replay_df[
         replay_df["Rede"] > 0
@@ -449,15 +343,15 @@ if generation_file and load_file:
     with col1:
 
         st.metric(
-            "Energia Limitada",
-            f"{total_curtailment:.0f} kWh"
+            "Energia Exportada",
+            f"{total_export:.0f} kWh"
         )
 
     with col2:
 
         st.metric(
-            "Máx Limitação",
-            f"{max_curtailment:.0f} kW"
+            "Máx Exportação",
+            f"{max_export:.0f} kW"
         )
 
     with col3:
@@ -474,7 +368,7 @@ if generation_file and load_file:
     st.subheader("Dados Operacionais")
 
     st.dataframe(
-        replay_df.tail(100),
+        replay_df.tail(50),
         use_container_width=True
     )
 
