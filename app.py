@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 import numpy as np
 import time
+from datetime import timedelta
 
 # =========================================================
 # PAGE CONFIG
@@ -22,661 +22,719 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* =====================================================
-FUNDO
-===================================================== */
+/* Fundo geral */
+.stApp { background-color: #f4f6fb; }
 
-.stApp {
-    background-color: #f4f6fb;
-}
-
-/* =====================================================
-SIDEBAR
-===================================================== */
-
+/* Sidebar */
 section[data-testid="stSidebar"] {
-    background-color: #f0f2f6;
-    border-right: 1px solid #dfe3eb;
+    background-color: #ffffff;
+    border-right: 1px solid #e5e7eb;
+}
+section[data-testid="stSidebar"] .stMarkdown h2,
+section[data-testid="stSidebar"] .stMarkdown h3 {
+    color: #1f2937;
+    font-weight: 600;
 }
 
-/* =====================================================
-REMOVE ESPAÇAMENTO
-===================================================== */
-
+/* Container principal */
 .block-container {
-    padding-top: 1rem;
+    padding-top: 1.2rem;
     padding-bottom: 1rem;
     max-width: 100%;
 }
 
-/* =====================================================
-CARDS
-===================================================== */
+/* Botão primário (Rodando Replay) */
+section[data-testid="stSidebar"] button[kind="primary"] {
+    background-color: #2563eb;
+    color: white;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    height: 42px;
+}
+section[data-testid="stSidebar"] button[kind="primary"]:hover {
+    background-color: #1d4ed8;
+}
 
+/* Botão secundário (Reiniciar Replay) */
+section[data-testid="stSidebar"] button[kind="secondary"] {
+    background-color: #ffffff;
+    color: #374151;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    font-weight: 500;
+    height: 42px;
+}
+section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+/* Cards KPI do topo */
 .kpi-card {
     background: white;
-    border-radius: 18px;
-    padding: 18px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    height: 120px;
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    height: 130px;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .kpi-title {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 600;
-    margin-bottom: 10px;
+    letter-spacing: 0.02em;
 }
 
 .kpi-value {
-    font-size: 42px;
+    font-size: 30px;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.1;
+    margin-top: 4px;
 }
 
-.kpi-sub {
-    font-size: 13px;
-    color: #7b8190;
-    margin-top: 8px;
+.kpi-spark {
+    margin-top: 4px;
+    height: 30px;
 }
 
-.status-ok {
-    color: #16a34a;
-}
-
-.status-export {
-    color: #dc2626;
-}
-
-/* =====================================================
-TÍTULOS
-===================================================== */
-
-.section-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1f2937;
-}
-
-/* =====================================================
-CAIXAS RESUMO
-===================================================== */
-
-.summary-box {
+/* Card de Replay (timestamp) */
+.replay-card {
     background: white;
     border-radius: 16px;
-    padding: 22px;
-    text-align: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    padding: 16px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.replay-clock { font-size: 14px; color: #6b7280; }
+.replay-time {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-top: 4px;
+}
+.replay-sub {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 6px;
 }
 
-/* =====================================================
-TABELA
-===================================================== */
-
-[data-testid="stDataFrame"] {
+/* Card de Status */
+.status-card {
+    background: white;
     border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.status-label { font-size: 13px; font-weight: 600; color: #6b7280; }
+.status-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+.status-icon {
+    font-size: 28px;
+}
+.status-text {
+    font-size: 22px;
+    font-weight: 700;
+}
+.status-sub {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* Título de seção */
+.section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 14px 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Summary boxes */
+.summary-box {
+    border-radius: 14px;
+    padding: 18px 20px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.summary-blue { background: #eff6ff; }
+.summary-red { background: #fef2f2; }
+.summary-green { background: #f0fdf4; }
+.summary-yellow { background: #fefce8; }
+
+.summary-title { font-size: 14px; font-weight: 600; }
+.summary-value { font-size: 28px; font-weight: 700; margin-top: 8px; line-height: 1.1; }
+.summary-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+/* Cards de arquivos carregados */
+.file-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.file-icon { font-size: 20px; }
+.file-info { flex: 1; }
+.file-name { font-size: 13px; font-weight: 600; color: #1f2937; }
+.file-size { font-size: 11px; color: #6b7280; }
+.file-check { color: #16a34a; font-size: 16px; }
+
+/* Dataframe */
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
     overflow: hidden;
+}
+
+/* Botões de zoom rápido */
+.zoom-active button {
+    background-color: #dbeafe !important;
+    color: #1d4ed8 !important;
+    border: 1px solid #93c5fd !important;
+    font-weight: 600 !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
+# FUNÇÕES AUXILIARES
+# =========================================================
+
+def sparkline_svg(values, color, width=180, height=30):
+    """Gera SVG simples de sparkline a partir de uma lista de valores."""
+    if values is None or len(values) < 2:
+        return ""
+
+    vals = [v for v in values if pd.notna(v)]
+    if len(vals) < 2:
+        return ""
+
+    vmin, vmax = min(vals), max(vals)
+    span = vmax - vmin if vmax > vmin else 1
+
+    n = len(vals)
+    points = []
+    for i, v in enumerate(vals):
+        x = (i / (n - 1)) * width
+        y = height - ((v - vmin) / span) * height
+        points.append(f"{x:.1f},{y:.1f}")
+
+    path = "M " + " L ".join(points)
+
+    # área preenchida (gradiente suave)
+    area_points = (
+        f"M 0,{height} L "
+        + " L ".join(points)
+        + f" L {width},{height} Z"
+    )
+
+    svg = f'''
+    <svg width="100%" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="grad-{color[1:]}" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="{color}" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="{color}" stop-opacity="0"/>
+            </linearGradient>
+        </defs>
+        <path d="{area_points}" fill="url(#grad-{color[1:]})"/>
+        <path d="{path}" fill="none" stroke="{color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    '''
+    return svg
+
+
+def kpi_card_html(title, value, color, sparkline_html=""):
+    """Gera HTML de um card KPI com sparkline."""
+    return f"""
+    <div class="kpi-card">
+        <div>
+            <div class="kpi-title" style="color:{color}">{title}</div>
+            <div class="kpi-value" style="color:{color}">{value}</div>
+        </div>
+        <div class="kpi-spark">{sparkline_html}</div>
+    </div>
+    """
+
+
+def summary_box_html(title, value, color, cls, sub=""):
+    """Gera HTML de um card de resumo."""
+    return f"""
+    <div class="summary-box {cls}">
+        <div class="summary-title" style="color:{color}">{title}</div>
+        <div class="summary-value" style="color:{color}">{value}</div>
+        <div class="summary-sub">{sub}</div>
+    </div>
+    """
+
+
+def format_filesize(num_bytes):
+    """Formata tamanho de arquivo em KB ou MB."""
+    if num_bytes < 1024 * 1024:
+        return f"{num_bytes / 1024:.1f} KB"
+    return f"{num_bytes / (1024 * 1024):.1f} MB"
+
+
+# =========================================================
+# SESSION STATE INIT
+# =========================================================
+
+if "index" not in st.session_state:
+    st.session_state.index = 0
+if "zoom_range" not in st.session_state:
+    st.session_state.zoom_range = None  # None = mostra tudo até o índice atual
+if "run_simulation" not in st.session_state:
+    st.session_state.run_simulation = True
+
+
+# =========================================================
 # SIDEBAR
 # =========================================================
 
 with st.sidebar:
-
     st.markdown("## Controles")
 
-    run_simulation = st.toggle(
-        "▶ Rodando Replay",
-        value=True
+    # Botão principal de toggle
+    if st.session_state.run_simulation:
+        if st.button("⏸  Pausar Replay", type="primary", use_container_width=True, key="btn_pause"):
+            st.session_state.run_simulation = False
+            st.rerun()
+    else:
+        if st.button("▶  Rodando Replay", type="primary", use_container_width=True, key="btn_play"):
+            st.session_state.run_simulation = True
+            st.rerun()
+
+    st.markdown("**Velocidade Replay**")
+    speed_label_col1, speed_label_col2 = st.columns([1, 1])
+    speed = st.slider(
+        "Velocidade",
+        0.1, 2.0, 0.5, 0.1,
+        label_visibility="collapsed"
+    )
+    st.markdown(
+        f"<div style='display:flex; justify-content:space-between; "
+        f"font-size:12px; color:#6b7280; margin-top:-8px;'>"
+        f"<span>0.1x</span><span style='font-weight:600; color:#2563eb;'>{speed}x</span><span>2.0x</span>"
+        f"</div>",
+        unsafe_allow_html=True
     )
 
-    speed = st.slider(
-        "Velocidade Replay",
-        0.1,
-        2.0,
-        0.5,
-        0.1
-    )
+    st.markdown("")
+
+    if st.button("↻  Reiniciar Replay", type="secondary", use_container_width=True, key="btn_reset"):
+        st.session_state.index = 0
+        st.rerun()
 
     st.markdown("---")
-
     st.markdown("### Intervalo dos dados")
 
-    start_date = st.date_input(
-        "Início"
-    )
-
-    end_date = st.date_input(
-        "Fim"
-    )
+    start_date = st.date_input("Início:", key="dt_inicio")
+    end_date = st.date_input("Fim:", key="dt_fim")
 
     st.markdown("---")
-
     st.markdown("### Zoom rápido")
 
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        st.button("24h")
-
-    with c2:
-        st.button("7 dias")
-
-    with c3:
-        st.button("30 dias")
-
-    with c4:
-        st.button("1 ano")
+    zc1, zc2, zc3, zc4 = st.columns(4)
+    with zc1:
+        if st.button("24h", use_container_width=True, key="z24"):
+            st.session_state.zoom_range = 24
+            st.rerun()
+    with zc2:
+        if st.button("7 dias", use_container_width=True, key="z7d"):
+            st.session_state.zoom_range = 24 * 7
+            st.rerun()
+    with zc3:
+        if st.button("30 dias", use_container_width=True, key="z30d"):
+            st.session_state.zoom_range = 24 * 30
+            st.rerun()
+    with zc4:
+        if st.button("1 ano", use_container_width=True, key="z1a"):
+            st.session_state.zoom_range = None
+            st.rerun()
 
     st.markdown("---")
+    st.markdown("### Arquivos carregados")
 
     generation_file = st.file_uploader(
         "geracao.csv",
-        type=["csv"]
+        type=["csv"],
+        key="up_gen"
     )
-
     load_file = st.file_uploader(
         "consumo.csv",
-        type=["csv"]
+        type=["csv"],
+        key="up_load"
     )
 
-# =========================================================
-# HEADER
-# =========================================================
+    # Mostra cards dos arquivos carregados
+    if generation_file is not None:
+        st.markdown(
+            f"""
+            <div class="file-card">
+                <div class="file-icon">📄</div>
+                <div class="file-info">
+                    <div class="file-name">{generation_file.name}</div>
+                    <div class="file-size">{format_filesize(generation_file.size)}</div>
+                </div>
+                <div class="file-check">✓</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    if load_file is not None:
+        st.markdown(
+            f"""
+            <div class="file-card">
+                <div class="file-icon">📄</div>
+                <div class="file-info">
+                    <div class="file-name">{load_file.name}</div>
+                    <div class="file-size">{format_filesize(load_file.size)}</div>
+                </div>
+                <div class="file-check">✓</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-top1, top2 = st.columns([1.2, 6])
-
-with top1:
-
-    st.markdown("""
-    <div class="kpi-card"
-    style="height:120px; display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;">
-
-    <div style="
-    font-size:42px;
-    font-weight:700;
-    ">
-    🕒
-    </div>
-
-    <div style="
-    font-size:20px;
-    font-weight:700;
-    margin-top:10px;
-    ">
-    Replay
-    </div>
-
-    </div>
-    """, unsafe_allow_html=True)
 
 # =========================================================
-# PROCESSAMENTO
+# PROCESSAMENTO PRINCIPAL
 # =========================================================
 
 if generation_file and load_file:
 
-    # =====================================================
-    # LOAD CSV
-    # =====================================================
-
+    # ---------------- Load CSV ----------------
     gen_df = pd.read_csv(generation_file)
     load_df = pd.read_csv(load_file)
 
     gen_df.columns = ["DataHora", "Geracao"]
     load_df.columns = ["DataHora", "Carga"]
 
-    gen_df["DataHora"] = pd.to_datetime(
-        gen_df["DataHora"]
-    )
+    gen_df["DataHora"] = pd.to_datetime(gen_df["DataHora"])
+    load_df["DataHora"] = pd.to_datetime(load_df["DataHora"])
 
-    load_df["DataHora"] = pd.to_datetime(
-        load_df["DataHora"]
-    )
+    df = pd.merge(gen_df, load_df, on="DataHora").sort_values("DataHora").reset_index(drop=True)
 
-    df = pd.merge(
-        gen_df,
-        load_df,
-        on="DataHora"
-    )
+    # ---------------- GridZero ----------------
+    df["Geracao_Limitada"] = df[["Geracao", "Carga"]].min(axis=1)
+    df["Geracao_Cortada"] = df["Geracao"] - df["Geracao_Limitada"]
+    df["Energia_Light"] = df["Carga"] - df["Geracao_Limitada"]
 
-    # =====================================================
-    # GRIDZERO
-    # =====================================================
+    # Coluna VISUAL para o gráfico: mostra a "exportação evitada" como valor negativo
+    # Quando há corte (Geracao_Cortada > 0), plota como negativo para visualizar o que seria exportado
+    df["Energia_Light_Visual"] = df["Energia_Light"] - df["Geracao_Cortada"]
 
-    df["Geracao_Limitada"] = df[
-        ["Geracao", "Carga"]
-    ].min(axis=1)
-
-    df["Geracao_Cortada"] = (
-        df["Geracao"]
-        - df["Geracao_Limitada"]
-    )
-
-    df["Energia_Light"] = (
-        df["Carga"]
-        - df["Geracao_Limitada"]
-    )
-
-    # =====================================================
-    # SESSION
-    # =====================================================
-
-    if "index" not in st.session_state:
-        st.session_state.index = 0
-
+    # ---------------- Replay state ----------------
     current_index = st.session_state.index
-
     if current_index >= len(df):
         current_index = len(df) - 1
+        st.session_state.index = current_index
 
-    replay_df = df.iloc[:current_index + 1]
-
+    replay_df = df.iloc[: current_index + 1]
     current = df.iloc[current_index]
 
+    # DataFrame para o gráfico (com zoom rápido)
+    if st.session_state.zoom_range is not None:
+        zoom_start = max(0, current_index + 1 - st.session_state.zoom_range)
+        chart_df = df.iloc[zoom_start: current_index + 1]
+    else:
+        chart_df = replay_df
+
     # =====================================================
-    # TOP KPIs
+    # HEADER — Replay card + KPIs + Status
     # =====================================================
 
-    with top2:
+    cols = st.columns([1.6, 1.3, 1.3, 1.3, 1.3, 1.3])
 
-        c1, c2, c3, c4, c5 = st.columns(5)
-
-        def kpi_card(
-            coluna,
-            titulo,
-            valor,
-            cor,
-            subtitulo=""
-        ):
-
-            with coluna:
-
-                st.markdown(f"""
-                <div class="kpi-card">
-
-                    <div class="kpi-title"
-                    style="color:{cor}">
-                    {titulo}
-                    </div>
-
-                    <div class="kpi-value"
-                    style="color:{cor}">
-                    {valor}
-                    </div>
-
-                    <div class="kpi-sub">
-                    {subtitulo}
-                    </div>
-
-                </div>
-                """, unsafe_allow_html=True)
-
-        kpi_card(
-            c1,
-            "Carga Atual",
-            f"{current['Carga']:.0f} kW",
-            "#2563eb"
+    # ---- Card de Replay (timestamp) ----
+    with cols[0]:
+        ts = current["DataHora"]
+        st.markdown(
+            f"""
+            <div class="replay-card">
+                <div class="replay-clock">🕒</div>
+                <div class="replay-time">{ts.strftime("%d/%m/%Y %H:%M")}</div>
+                <div class="replay-sub">Ponto atual do replay</div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
-        kpi_card(
-            c2,
-            "Geração Limitada",
-            f"{current['Geracao_Limitada']:.0f} kW",
-            "#16a34a"
+    # Função helper para extrair os últimos N pontos para sparkline
+    def spark_data(col, n=40):
+        return replay_df[col].tail(n).tolist()
+
+    # ---- KPI Carga Atual ----
+    with cols[1]:
+        spark = sparkline_svg(spark_data("Carga"), "#2563eb")
+        st.markdown(
+            kpi_card_html(
+                "Carga Atual",
+                f"{current['Carga']:,.0f} kW".replace(",", "."),
+                "#2563eb",
+                spark
+            ),
+            unsafe_allow_html=True
         )
 
-        kpi_card(
-            c3,
-            "Geração Cortada",
-            f"{current['Geracao_Cortada']:.0f} kW",
-            "#f97316"
+    # ---- KPI Geração Limitada ----
+    with cols[2]:
+        spark = sparkline_svg(spark_data("Geracao_Limitada"), "#16a34a")
+        st.markdown(
+            kpi_card_html(
+                "Geração Limitada",
+                f"{current['Geracao_Limitada']:,.0f} kW".replace(",", "."),
+                "#16a34a",
+                spark
+            ),
+            unsafe_allow_html=True
         )
 
-        kpi_card(
-            c4,
-            "Energia da Light",
-            f"{current['Energia_Light']:.0f} kW",
-            "#9333ea"
+    # ---- KPI Geração Cortada ----
+    with cols[3]:
+        spark = sparkline_svg(spark_data("Geracao_Cortada"), "#f97316")
+        st.markdown(
+            kpi_card_html(
+                "Geração Cortada",
+                f"{current['Geracao_Cortada']:,.0f} kW".replace(",", "."),
+                "#f97316",
+                spark
+            ),
+            unsafe_allow_html=True
         )
 
-        # =================================================
-        # STATUS
-        # =================================================
+    # ---- KPI Energia da Light ----
+    with cols[4]:
+        spark = sparkline_svg(spark_data("Energia_Light"), "#9333ea")
+        st.markdown(
+            kpi_card_html(
+                "Energia da Light",
+                f"{current['Energia_Light']:,.0f} kW".replace(",", "."),
+                "#9333ea",
+                spark
+            ),
+            unsafe_allow_html=True
+        )
 
+    # ---- Card de Status ----
+    with cols[5]:
         if current["Geracao_Cortada"] > 0:
-
-            status = "GridZero Ativo"
-            sub = "Sem exportação"
-            cor = "#16a34a"
-
+            status_text = "GridZero Ativo"
+            status_sub = "Sem exportação"
+            status_color = "#16a34a"
+            status_icon = "🛡️"
         else:
+            status_text = "Normal"
+            status_sub = "Sem limitação"
+            status_color = "#64748b"
+            status_icon = "✓"
 
-            status = "Normal"
-            sub = "Sem limitação"
-            cor = "#64748b"
-
-        kpi_card(
-            c5,
-            "Status",
-            status,
-            cor,
-            sub
+        st.markdown(
+            f"""
+            <div class="status-card">
+                <div class="status-label">Status</div>
+                <div class="status-main">
+                    <div class="status-icon">{status_icon}</div>
+                    <div class="status-text" style="color:{status_color}">{status_text}</div>
+                </div>
+                <div class="status-sub">{status_sub}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
     # =====================================================
     # GRÁFICO
     # =====================================================
 
-    st.markdown("""
-    <div class="section-title">
-    Fluxo de Potência
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">📈 Fluxo de Potência</div>',
+        unsafe_allow_html=True
+    )
 
     fig = go.Figure()
 
-    # =====================================================
-    # CARGA
-    # =====================================================
-
+    # Carga
     fig.add_trace(go.Scatter(
-
-        x=replay_df["DataHora"],
-        y=replay_df["Carga"],
-
-        name="Carga",
-
+        x=chart_df["DataHora"], y=chart_df["Carga"],
+        name="Carga (Consumo)",
         mode="lines",
-
-        line=dict(
-            color="#2563eb",
-            width=3,
-            shape="spline",
-            smoothing=1.2
-        )
-
+        line=dict(color="#2563eb", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # =====================================================
-    # GERAÇÃO LIMITADA
-    # =====================================================
-
+    # Geração Limitada
     fig.add_trace(go.Scatter(
-
-        x=replay_df["DataHora"],
-        y=replay_df["Geracao_Limitada"],
-
+        x=chart_df["DataHora"], y=chart_df["Geracao_Limitada"],
         name="Geração Limitada",
-
         mode="lines",
-
-        line=dict(
-            color="#16a34a",
-            width=3,
-            shape="spline",
-            smoothing=1.2
-        )
-
+        line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # =====================================================
-    # GERAÇÃO CORTADA
-    # =====================================================
-
+    # Geração Cortada (linha tracejada)
     fig.add_trace(go.Scatter(
-
-        x=replay_df["DataHora"],
-        y=replay_df["Geracao_Cortada"],
-
+        x=chart_df["DataHora"], y=chart_df["Geracao_Cortada"],
         name="Geração Cortada",
-
         mode="lines",
-
-        line=dict(
-            color="#f97316",
-            width=3,
-            dash="dash",
-            shape="spline",
-            smoothing=1.2
-        )
-
+        line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2)
     ))
 
-    # =====================================================
-    # ENERGIA LIGHT
-    # =====================================================
-
+    # Energia consumida da Light — versão VISUAL (com valores negativos
+    # quando seria exportação, para destacar o quanto o GridZero está evitando)
     fig.add_trace(go.Scatter(
-
-        x=replay_df["DataHora"],
-        y=replay_df["Energia_Light"],
-
+        x=chart_df["DataHora"], y=chart_df["Energia_Light_Visual"],
         name="Energia Consumida da Light",
-
         mode="lines",
-
-        line=dict(
-            color="#9333ea",
-            width=3,
-            shape="spline",
-            smoothing=1.2
-        )
-
+        line=dict(color="#9333ea", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # =====================================================
-    # LINHA ZERO
-    # =====================================================
-
-    fig.add_hline(
-
-        y=0,
-
-        line_width=4,
-
-        line_color="black"
-
-    )
-
-    # =====================================================
-    # LAYOUT
-    # =====================================================
+    # Linha zero
+    fig.add_hline(y=0, line_width=2.5, line_color="black")
 
     fig.update_layout(
-
-        height=600,
-
+        height=480,
         template="plotly_white",
-
         paper_bgcolor="white",
-
         plot_bgcolor="white",
-
         hovermode="x unified",
-
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5
+            yanchor="bottom", y=1.02,
+            xanchor="center", x=0.5,
+            bgcolor="rgba(255,255,255,0)",
+            font=dict(size=12)
         ),
-
-        margin=dict(
-            l=10,
-            r=10,
-            t=10,
-            b=10
-        ),
-
+        margin=dict(l=10, r=10, t=10, b=40),
         xaxis=dict(
             title="Tempo",
-            rangeslider=dict(
-                visible=False
-            )
+            gridcolor="#f1f5f9",
+            showgrid=True
         ),
-
         yaxis=dict(
             title="Potência (kW)",
-            gridcolor="#e5e7eb"
+            gridcolor="#e5e7eb",
+            zeroline=False
         )
-
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     # =====================================================
-    # RESUMO
+    # CARDS DE RESUMO
     # =====================================================
 
-    c1, c2, c3, c4 = st.columns(4)
+    total_import = replay_df[replay_df["Energia_Light"] > 0]["Energia_Light"].sum()
+    energia_cortada = replay_df["Geracao_Cortada"].sum()
+    max_corte = replay_df["Geracao_Cortada"].max() if len(replay_df) else 0
+    horas_corte = len(replay_df[replay_df["Geracao_Cortada"] > 0])
 
-    total_import = replay_df[
-        replay_df["Energia_Light"] > 0
-    ]["Energia_Light"].sum()
-
-    energia_cortada = replay_df[
-        "Geracao_Cortada"
-    ].sum()
-
-    max_corte = replay_df[
-        "Geracao_Cortada"
-    ].max()
-
-    horas_corte = len(
-        replay_df[
-            replay_df["Geracao_Cortada"] > 0
-        ]
-    )
-
-    def summary(
-        coluna,
-        titulo,
-        valor,
-        cor,
-        sub=""
-    ):
-
-        with coluna:
-
-            st.markdown(f"""
-            <div class="summary-box">
-
-                <div style="
-                font-size:16px;
-                font-weight:600;
-                color:{cor};
-                ">
-                {titulo}
-                </div>
-
-                <div style="
-                font-size:42px;
-                font-weight:700;
-                color:{cor};
-                margin-top:10px;
-                ">
-                {valor}
-                </div>
-
-                <div style="
-                font-size:14px;
-                color:#7b8190;
-                margin-top:5px;
-                ">
-                {sub}
-                </div>
-
-            </div>
-            """, unsafe_allow_html=True)
-
-    summary(
-        c1,
-        "Energia Importada da Light",
-        f"{total_import:.0f} kWh",
-        "#2563eb",
-        "Total no período"
-    )
-
-    summary(
-        c2,
-        "Energia que seria Exportada",
-        f"{energia_cortada:.0f} kWh",
-        "#dc2626",
-        "Evitada pelo GridZero"
-    )
-
-    summary(
-        c3,
-        "Máxima Geração Cortada",
-        f"{max_corte:.0f} kW",
-        "#16a34a",
-        "Pico de corte"
-    )
-
-    summary(
-        c4,
-        "Horas com Corte",
-        f"{horas_corte:.0f} h",
-        "#9333ea",
-        "GridZero ativo"
-    )
+    s1, s2, s3, s4 = st.columns(4)
+    with s1:
+        st.markdown(
+            summary_box_html(
+                "Energia Importada (Light)",
+                f"{total_import:,.0f} kWh".replace(",", "."),
+                "#2563eb", "summary-blue",
+                "Total no período selecionado"
+            ),
+            unsafe_allow_html=True
+        )
+    with s2:
+        st.markdown(
+            summary_box_html(
+                "Energia Exportação (Evitada)",
+                f"{energia_cortada:,.0f} kWh".replace(",", "."),
+                "#dc2626", "summary-red",
+                "Total cortada pelo GridZero"
+            ),
+            unsafe_allow_html=True
+        )
+    with s3:
+        st.markdown(
+            summary_box_html(
+                "Máxima Exportação Evitada",
+                f"{max_corte:,.0f} kW".replace(",", "."),
+                "#16a34a", "summary-green",
+                "Pico de geração cortada"
+            ),
+            unsafe_allow_html=True
+        )
+    with s4:
+        pct = (horas_corte / len(replay_df) * 100) if len(replay_df) else 0
+        st.markdown(
+            summary_box_html(
+                "Horas com Corte (GridZero Ativo)",
+                f"{horas_corte:,.0f} h".replace(",", "."),
+                "#9333ea", "summary-yellow",
+                f"{pct:.1f}% do período"
+            ),
+            unsafe_allow_html=True
+        )
 
     # =====================================================
     # TABELA
     # =====================================================
 
-    st.markdown("""
-    <br>
-    <div class="section-title">
-    Dados Operacionais
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">📋 Dados Operacionais '
+        '<span style="font-size:13px; font-weight:400; color:#6b7280;">'
+        '(últimos registros exibidos)</span></div>',
+        unsafe_allow_html=True
+    )
 
     tabela = replay_df.copy()
+    tabela["Status"] = tabela["Geracao_Cortada"].apply(
+        lambda x: "GridZero Ativo" if x > 0 else "Importando"
+    )
 
-    tabela = tabela.rename(columns={
+    tabela = tabela[[
+        "DataHora", "Carga", "Geracao_Limitada",
+        "Geracao_Cortada", "Energia_Light", "Status"
+    ]].rename(columns={
+        "DataHora": "DataHora",
+        "Carga": "Carga (kW)",
         "Geracao_Limitada": "Geração Limitada (kW)",
         "Geracao_Cortada": "Geração Cortada (kW)",
-        "Energia_Light": "Energia Consumida da Light (kW)",
-        "Carga": "Carga (kW)"
+        "Energia_Light": "Energia Consumida da Light (kW)"
     })
 
+    # Mostra do mais recente para o mais antigo
     st.dataframe(
-        tabela.tail(20),
+        tabela.tail(20).iloc[::-1],
         use_container_width=True,
-        height=320
+        height=320,
+        hide_index=True
     )
 
     # =====================================================
     # AUTO PLAY
     # =====================================================
 
-    if run_simulation:
-
+    if st.session_state.run_simulation:
         if st.session_state.index < len(df) - 1:
-
             st.session_state.index += 1
-
             time.sleep(speed)
-
             st.rerun()
 
 else:
-
-    st.info(
-        "Faça upload dos arquivos CSV."
-    )
+    st.info("📂 Faça o upload dos arquivos **geracao.csv** e **consumo.csv** na barra lateral para iniciar o replay.")
