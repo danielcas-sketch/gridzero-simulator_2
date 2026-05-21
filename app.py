@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 import time
-from datetime import timedelta
 
 # =========================================================
 # PAGE CONFIG
@@ -43,7 +42,7 @@ section[data-testid="stSidebar"] .stMarkdown h3 {
     max-width: 100%;
 }
 
-/* Botão primário (Rodando Replay) */
+/* Botão primário (Rodando Replay / Pausar) */
 section[data-testid="stSidebar"] button[kind="primary"] {
     background-color: #2563eb;
     color: white;
@@ -83,20 +82,17 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {
     flex-direction: column;
     justify-content: space-between;
 }
-
 .kpi-title {
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.02em;
 }
-
 .kpi-value {
     font-size: 30px;
     font-weight: 700;
     line-height: 1.1;
     margin-top: 4px;
 }
-
 .kpi-spark {
     margin-top: 4px;
     height: 30px;
@@ -144,18 +140,9 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {
     gap: 10px;
     margin-top: 6px;
 }
-.status-icon {
-    font-size: 28px;
-}
-.status-text {
-    font-size: 22px;
-    font-weight: 700;
-}
-.status-sub {
-    font-size: 13px;
-    color: #6b7280;
-    margin-top: 4px;
-}
+.status-icon { font-size: 28px; }
+.status-text { font-size: 22px; font-weight: 700; }
+.status-sub { font-size: 13px; color: #6b7280; margin-top: 4px; }
 
 /* Título de seção */
 .section-title {
@@ -179,7 +166,6 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {
 .summary-red { background: #fef2f2; }
 .summary-green { background: #f0fdf4; }
 .summary-yellow { background: #fefce8; }
-
 .summary-title { font-size: 14px; font-weight: 600; }
 .summary-value { font-size: 28px; font-weight: 700; margin-top: 8px; line-height: 1.1; }
 .summary-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
@@ -205,14 +191,6 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {
 [data-testid="stDataFrame"] {
     border-radius: 12px;
     overflow: hidden;
-}
-
-/* Botões de zoom rápido */
-.zoom-active button {
-    background-color: #dbeafe !important;
-    color: #1d4ed8 !important;
-    border: 1px solid #93c5fd !important;
-    font-weight: 600 !important;
 }
 
 </style>
@@ -243,22 +221,23 @@ def sparkline_svg(values, color, width=180, height=30):
 
     path = "M " + " L ".join(points)
 
-    # área preenchida (gradiente suave)
     area_points = (
         f"M 0,{height} L "
         + " L ".join(points)
         + f" L {width},{height} Z"
     )
 
+    grad_id = f"grad-{color[1:]}-{abs(hash(tuple(vals))) % 100000}"
+
     svg = f'''
     <svg width="100%" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <linearGradient id="grad-{color[1:]}" x1="0" x2="0" y1="0" y2="1">
+            <linearGradient id="{grad_id}" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stop-color="{color}" stop-opacity="0.25"/>
                 <stop offset="100%" stop-color="{color}" stop-opacity="0"/>
             </linearGradient>
         </defs>
-        <path d="{area_points}" fill="url(#grad-{color[1:]})"/>
+        <path d="{area_points}" fill="url(#{grad_id})"/>
         <path d="{path}" fill="none" stroke="{color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
     </svg>
     '''
@@ -302,10 +281,19 @@ def format_filesize(num_bytes):
 
 if "index" not in st.session_state:
     st.session_state.index = 0
-if "zoom_range" not in st.session_state:
-    st.session_state.zoom_range = None  # None = mostra tudo até o índice atual
 if "run_simulation" not in st.session_state:
     st.session_state.run_simulation = True
+
+
+# =========================================================
+# CALLBACKS (atualizam estado SEM forçar rerun manual)
+# =========================================================
+
+def toggle_play():
+    st.session_state.run_simulation = not st.session_state.run_simulation
+
+def reset_replay():
+    st.session_state.index = 0
 
 
 # =========================================================
@@ -315,18 +303,25 @@ if "run_simulation" not in st.session_state:
 with st.sidebar:
     st.markdown("## Controles")
 
-    # Botão principal de toggle
+    # Botão de play/pause via callback (sem st.rerun manual)
     if st.session_state.run_simulation:
-        if st.button("⏸  Pausar Replay", type="primary", use_container_width=True, key="btn_pause"):
-            st.session_state.run_simulation = False
-            st.rerun()
+        st.button(
+            "⏸  Pausar Replay",
+            type="primary",
+            use_container_width=True,
+            key="btn_toggle",
+            on_click=toggle_play
+        )
     else:
-        if st.button("▶  Rodando Replay", type="primary", use_container_width=True, key="btn_play"):
-            st.session_state.run_simulation = True
-            st.rerun()
+        st.button(
+            "▶  Rodando Replay",
+            type="primary",
+            use_container_width=True,
+            key="btn_toggle",
+            on_click=toggle_play
+        )
 
     st.markdown("**Velocidade Replay**")
-    speed_label_col1, speed_label_col2 = st.columns([1, 1])
     speed = st.slider(
         "Velocidade",
         0.1, 2.0, 0.5, 0.1,
@@ -342,36 +337,19 @@ with st.sidebar:
 
     st.markdown("")
 
-    if st.button("↻  Reiniciar Replay", type="secondary", use_container_width=True, key="btn_reset"):
-        st.session_state.index = 0
-        st.rerun()
+    st.button(
+        "↻  Reiniciar Replay",
+        type="secondary",
+        use_container_width=True,
+        key="btn_reset",
+        on_click=reset_replay
+    )
 
     st.markdown("---")
     st.markdown("### Intervalo dos dados")
 
     start_date = st.date_input("Início:", key="dt_inicio")
     end_date = st.date_input("Fim:", key="dt_fim")
-
-    st.markdown("---")
-    st.markdown("### Zoom rápido")
-
-    zc1, zc2, zc3, zc4 = st.columns(4)
-    with zc1:
-        if st.button("24h", use_container_width=True, key="z24"):
-            st.session_state.zoom_range = 24
-            st.rerun()
-    with zc2:
-        if st.button("7 dias", use_container_width=True, key="z7d"):
-            st.session_state.zoom_range = 24 * 7
-            st.rerun()
-    with zc3:
-        if st.button("30 dias", use_container_width=True, key="z30d"):
-            st.session_state.zoom_range = 24 * 30
-            st.rerun()
-    with zc4:
-        if st.button("1 ano", use_container_width=True, key="z1a"):
-            st.session_state.zoom_range = None
-            st.rerun()
 
     st.markdown("---")
     st.markdown("### Arquivos carregados")
@@ -387,7 +365,6 @@ with st.sidebar:
         key="up_load"
     )
 
-    # Mostra cards dos arquivos carregados
     if generation_file is not None:
         st.markdown(
             f"""
@@ -440,26 +417,18 @@ if generation_file and load_file:
     df["Geracao_Limitada"] = df[["Geracao", "Carga"]].min(axis=1)
     df["Geracao_Cortada"] = df["Geracao"] - df["Geracao_Limitada"]
     df["Energia_Light"] = df["Carga"] - df["Geracao_Limitada"]
-
-    # Coluna VISUAL para o gráfico: mostra a "exportação evitada" como valor negativo
-    # Quando há corte (Geracao_Cortada > 0), plota como negativo para visualizar o que seria exportado
+    # Coluna VISUAL: exportação evitada como valor negativo no gráfico
     df["Energia_Light_Visual"] = df["Energia_Light"] - df["Geracao_Cortada"]
 
     # ---------------- Replay state ----------------
-    current_index = st.session_state.index
-    if current_index >= len(df):
-        current_index = len(df) - 1
-        st.session_state.index = current_index
+    if st.session_state.index >= len(df):
+        st.session_state.index = len(df) - 1
+    if st.session_state.index < 0:
+        st.session_state.index = 0
 
+    current_index = st.session_state.index
     replay_df = df.iloc[: current_index + 1]
     current = df.iloc[current_index]
-
-    # DataFrame para o gráfico (com zoom rápido)
-    if st.session_state.zoom_range is not None:
-        zoom_start = max(0, current_index + 1 - st.session_state.zoom_range)
-        chart_df = df.iloc[zoom_start: current_index + 1]
-    else:
-        chart_df = replay_df
 
     # =====================================================
     # HEADER — Replay card + KPIs + Status
@@ -467,7 +436,6 @@ if generation_file and load_file:
 
     cols = st.columns([1.6, 1.3, 1.3, 1.3, 1.3, 1.3])
 
-    # ---- Card de Replay (timestamp) ----
     with cols[0]:
         ts = current["DataHora"]
         st.markdown(
@@ -481,11 +449,9 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-    # Função helper para extrair os últimos N pontos para sparkline
     def spark_data(col, n=40):
         return replay_df[col].tail(n).tolist()
 
-    # ---- KPI Carga Atual ----
     with cols[1]:
         spark = sparkline_svg(spark_data("Carga"), "#2563eb")
         st.markdown(
@@ -498,7 +464,6 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-    # ---- KPI Geração Limitada ----
     with cols[2]:
         spark = sparkline_svg(spark_data("Geracao_Limitada"), "#16a34a")
         st.markdown(
@@ -511,7 +476,6 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-    # ---- KPI Geração Cortada ----
     with cols[3]:
         spark = sparkline_svg(spark_data("Geracao_Cortada"), "#f97316")
         st.markdown(
@@ -524,7 +488,6 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-    # ---- KPI Energia da Light ----
     with cols[4]:
         spark = sparkline_svg(spark_data("Energia_Light"), "#9333ea")
         st.markdown(
@@ -537,7 +500,6 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-    # ---- Card de Status ----
     with cols[5]:
         if current["Geracao_Cortada"] > 0:
             status_text = "GridZero Ativo"
@@ -565,7 +527,7 @@ if generation_file and load_file:
         )
 
     # =====================================================
-    # GRÁFICO
+    # GRÁFICO COM RANGESLIDER
     # =====================================================
 
     st.markdown(
@@ -575,44 +537,38 @@ if generation_file and load_file:
 
     fig = go.Figure()
 
-    # Carga
     fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Carga"],
+        x=replay_df["DataHora"], y=replay_df["Carga"],
         name="Carga (Consumo)",
         mode="lines",
         line=dict(color="#2563eb", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # Geração Limitada
     fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Geracao_Limitada"],
+        x=replay_df["DataHora"], y=replay_df["Geracao_Limitada"],
         name="Geração Limitada",
         mode="lines",
         line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # Geração Cortada (linha tracejada)
     fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Geracao_Cortada"],
+        x=replay_df["DataHora"], y=replay_df["Geracao_Cortada"],
         name="Geração Cortada",
         mode="lines",
         line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2)
     ))
 
-    # Energia consumida da Light — versão VISUAL (com valores negativos
-    # quando seria exportação, para destacar o quanto o GridZero está evitando)
     fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Energia_Light_Visual"],
+        x=replay_df["DataHora"], y=replay_df["Energia_Light_Visual"],
         name="Energia Consumida da Light",
         mode="lines",
         line=dict(color="#9333ea", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # Linha zero
     fig.add_hline(y=0, line_width=2.5, line_color="black")
 
     fig.update_layout(
-        height=480,
+        height=560,
         template="plotly_white",
         paper_bgcolor="white",
         plot_bgcolor="white",
@@ -624,11 +580,32 @@ if generation_file and load_file:
             bgcolor="rgba(255,255,255,0)",
             font=dict(size=12)
         ),
-        margin=dict(l=10, r=10, t=10, b=40),
+        margin=dict(l=10, r=10, t=60, b=10),
         xaxis=dict(
-            title="Tempo",
+            title="",
             gridcolor="#f1f5f9",
-            showgrid=True
+            showgrid=True,
+            rangeslider=dict(
+                visible=True,
+                thickness=0.08,
+                bgcolor="#f8fafc",
+                bordercolor="#e5e7eb",
+                borderwidth=1
+            ),
+            rangeselector=dict(
+                buttons=[
+                    dict(count=1, label="1d", step="day", stepmode="backward"),
+                    dict(count=7, label="7d", step="day", stepmode="backward"),
+                    dict(count=1, label="1m", step="month", stepmode="backward"),
+                    dict(count=6, label="6m", step="month", stepmode="backward"),
+                    dict(step="all", label="Tudo")
+                ],
+                bgcolor="#f1f5f9",
+                activecolor="#2563eb",
+                font=dict(size=12),
+                x=0,
+                y=1.12
+            )
         ),
         yaxis=dict(
             title="Potência (kW)",
@@ -706,19 +683,16 @@ if generation_file and load_file:
     tabela["Status"] = tabela["Geracao_Cortada"].apply(
         lambda x: "GridZero Ativo" if x > 0 else "Importando"
     )
-
     tabela = tabela[[
         "DataHora", "Carga", "Geracao_Limitada",
         "Geracao_Cortada", "Energia_Light", "Status"
     ]].rename(columns={
-        "DataHora": "DataHora",
         "Carga": "Carga (kW)",
         "Geracao_Limitada": "Geração Limitada (kW)",
         "Geracao_Cortada": "Geração Cortada (kW)",
         "Energia_Light": "Energia Consumida da Light (kW)"
     })
 
-    # Mostra do mais recente para o mais antigo
     st.dataframe(
         tabela.tail(20).iloc[::-1],
         use_container_width=True,
@@ -727,14 +701,15 @@ if generation_file and load_file:
     )
 
     # =====================================================
-    # AUTO PLAY
+    # AUTO PLAY — só dispara rerun quando estiver em modo play
+    # Quando pausado: o código NÃO chega aqui em modo de loop,
+    # então a UI fica congelada no último estado renderizado.
     # =====================================================
 
-    if st.session_state.run_simulation:
-        if st.session_state.index < len(df) - 1:
-            st.session_state.index += 1
-            time.sleep(speed)
-            st.rerun()
+    if st.session_state.run_simulation and st.session_state.index < len(df) - 1:
+        time.sleep(speed)
+        st.session_state.index += 1
+        st.rerun()
 
 else:
     st.info("📂 Faça o upload dos arquivos **geracao.csv** e **consumo.csv** na barra lateral para iniciar o replay.")
