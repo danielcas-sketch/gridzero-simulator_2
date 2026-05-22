@@ -193,6 +193,35 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {
 .file-size { font-size: 11px; color: #6b7280; }
 .file-check { color: #16a34a; font-size: 16px; }
 
+/* Labels do file uploader (geracao.csv, consumo.csv) — força cor escura */
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] label,
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] label p,
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+    color: #1f2937 !important;
+}
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] label p {
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+
+/* Labels do date input (Início, Fim) — força cor escura */
+section[data-testid="stSidebar"] [data-testid="stDateInput"] label,
+section[data-testid="stSidebar"] [data-testid="stDateInput"] label p {
+    color: #1f2937 !important;
+    font-weight: 500 !important;
+}
+
+/* Texto "Drag and drop file here" e "Limit 200MB per file" do uploader */
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] span,
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] small {
+    color: #374151 !important;
+}
+
+/* Botão "Browse files" do uploader */
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
+    color: #1f2937 !important;
+}
+
 /* Dataframe */
 [data-testid="stDataFrame"] {
     border-radius: 12px;
@@ -661,23 +690,30 @@ if generation_file and load_file:
         paper_bgcolor="white",
         plot_bgcolor="white",
         hovermode="x unified",
+        font=dict(
+            family="Arial, sans-serif",
+            size=12,
+            color="#1f2937"
+        ),
         legend=dict(
             orientation="h",
             yanchor="bottom", y=1.02,
             xanchor="center", x=0.5,
             bgcolor="rgba(255,255,255,0)",
-            font=dict(size=12)
+            font=dict(size=12, color="#1f2937")
         ),
         margin=dict(l=10, r=10, t=60, b=10),
         xaxis=dict(
             title="",
-            gridcolor="#f1f5f9",
+            gridcolor="#cbd5e1",
             showgrid=True,
+            tickfont=dict(color="#374151", size=11),
+            linecolor="#9ca3af",
             rangeslider=dict(
                 visible=True,
                 thickness=0.08,
                 bgcolor="#f8fafc",
-                bordercolor="#e5e7eb",
+                bordercolor="#9ca3af",
                 borderwidth=1
             ),
             rangeselector=dict(
@@ -688,16 +724,21 @@ if generation_file and load_file:
                     dict(count=6, label="6m", step="month", stepmode="backward"),
                     dict(step="all", label="Tudo")
                 ],
-                bgcolor="#f1f5f9",
+                bgcolor="#e5e7eb",
                 activecolor="#2563eb",
-                font=dict(size=12),
+                font=dict(size=12, color="#1f2937"),
                 x=0,
                 y=1.12
             )
         ),
         yaxis=dict(
-            title="Potência (kW)",
-            gridcolor="#e5e7eb",
+            title=dict(
+                text="Potência (kW)",
+                font=dict(color="#1f2937", size=13)
+            ),
+            gridcolor="#cbd5e1",
+            tickfont=dict(color="#374151", size=11),
+            linecolor="#9ca3af",
             zeroline=False
         )
     )
