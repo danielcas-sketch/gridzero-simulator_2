@@ -426,13 +426,75 @@ if generation_file and load_file:
     # Coluna VISUAL: exportação evitada como valor negativo no gráfico
     df["Energia_Light_Visual"] = df["Energia_Light"] - df["Geracao_Cortada"]
 
-    # Coluna VISUAL da geração cortada: só mostra a curva quando há corte real.
-    # Onde Geracao > Carga, plota a Geração total (ficando acima da Carga).
-    # Onde não há corte, fica None (Plotly não desenha).
-    df["Geracao_Cortada_Visual"] = df.apply(
-        lambda row: row["Geracao"] if row["Geracao_Cortada"] > 0 else None,
-        axis=1
-    )
+    # =====================================================
+    # GERAÇÃO CORTADA VISUAL com PONTOS DE CRUZAMENTO
+    # =====================================================
+    # A linha laranja só deve aparecer quando há corte (Geração > Carga).
+    # Para que ela "nasça" e "morra" exatamente em cima da linha azul (Carga),
+    # inserimos pontos artificiais nos instantes em que Geração cruza a Carga.
+    # Esses pontos são calculados por interpolação linear entre dois pontos
+    # consecutivos do CSV onde ocorre a transição.
+
+    def construir_curva_corte(df_in):
+        """Retorna uma cópia do DataFrame com:
+        - linhas adicionais nos pontos de cruzamento Geração x Carga
+        - coluna Geracao_Cortada_Visual preenchida só durante o corte,
+          começando e terminando exatamente em cima da Carga
+        """
+        rows = []
+        n = len(df_in)
+        for i in range(n):
+            rows.append(df_in.iloc[i].to_dict())
+            if i < n - 1:
+                a = df_in.iloc[i]
+                b = df_in.iloc[i + 1]
+                # detecta se houve cruzamento entre a e b
+                diff_a = a["Geracao"] - a["Carga"]
+                diff_b = b["Geracao"] - b["Carga"]
+                if diff_a * diff_b < 0:  # sinais opostos = cruzou
+                    # interpolação linear para achar o tempo do cruzamento
+                    frac = diff_a / (diff_a - diff_b)
+                    t_cross = a["DataHora"] + (b["DataHora"] - a["DataHora"]) * frac
+                    carga_cross = a["Carga"] + (b["Carga"] - a["Carga"]) * frac
+                    rows.append({
+                        "DataHora": t_cross,
+                        "Carga": carga_cross,
+                        "Geracao": carga_cross,  # no cruzamento, Geração = Carga
+                        "Geracao_Limitada": carga_cross,
+                        "Geracao_Cortada": 0.0,
+                        "Energia_Light": 0.0,
+                        "Energia_Light_Visual": 0.0,
+                    })
+        out = pd.DataFrame(rows).reset_index(drop=True)
+        # Geracao_Cortada_Visual:
+        #   - vale Geracao quando há corte (>0)
+        #   - vale Carga nos pontos de cruzamento (continuidade visual)
+        #   - vale None caso contrário (Plotly não desenha)
+        def cortada_visual(row):
+            if row["Geracao_Cortada"] > 0:
+                return row["Geracao"]
+            # pontos de cruzamento: Geração == Carga e a vizinhança tem corte
+            return None
+        out["Geracao_Cortada_Visual"] = out.apply(cortada_visual, axis=1)
+        # Para que os pontos de cruzamento "encostem" na curva, marcamos eles
+        # com o valor da Carga (que é igual à Geração no cruzamento).
+        # Isso conecta visualmente a linha laranja com a linha azul.
+        for idx in range(len(out)):
+            if pd.isna(out.loc[idx, "Geracao_Cortada_Visual"]):
+                # se vizinho anterior OU posterior tem corte, este ponto é cruzamento
+                prev_corte = (
+                    idx > 0
+                    and pd.notna(out.loc[idx - 1, "Geracao_Cortada_Visual"])
+                )
+                next_corte = (
+                    idx < len(out) - 1
+                    and pd.notna(out.loc[idx + 1, "Geracao_Cortada_Visual"])
+                )
+                if prev_corte or next_corte:
+                    out.loc[idx, "Geracao_Cortada_Visual"] = out.loc[idx, "Carga"]
+        return out
+
+    df = construir_curva_corte(df)
 
     # ---------------- Replay state ----------------
     if st.session_state.index >= len(df):
