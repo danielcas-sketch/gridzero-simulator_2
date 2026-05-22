@@ -426,6 +426,14 @@ if generation_file and load_file:
     # Coluna VISUAL: exportação evitada como valor negativo no gráfico
     df["Energia_Light_Visual"] = df["Energia_Light"] - df["Geracao_Cortada"]
 
+    # Coluna VISUAL da geração cortada: só mostra a curva quando há corte real.
+    # Onde Geracao > Carga, plota a Geração total (ficando acima da Carga).
+    # Onde não há corte, fica None (Plotly não desenha).
+    df["Geracao_Cortada_Visual"] = df.apply(
+        lambda row: row["Geracao"] if row["Geracao_Cortada"] > 0 else None,
+        axis=1
+    )
+
     # ---------------- Replay state ----------------
     if st.session_state.index >= len(df):
         st.session_state.index = len(df) - 1
@@ -543,6 +551,7 @@ if generation_file and load_file:
 
     fig = go.Figure()
 
+    # Carga (Consumo) — linha de referência azul
     fig.add_trace(go.Scatter(
         x=replay_df["DataHora"], y=replay_df["Carga"],
         name="Carga (Consumo)",
@@ -550,7 +559,20 @@ if generation_file and load_file:
         line=dict(color="#2563eb", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # Geração Limitada — o que efetivamente foi gerado
+    # Geração Cortada — só aparece quando há corte real (Geração > Carga).
+    # A área entre essa curva e a Carga (trace anterior) é preenchida em laranja,
+    # representando visualmente o que o GridZero está cortando.
+    fig.add_trace(go.Scatter(
+        x=replay_df["DataHora"], y=replay_df["Geracao_Cortada_Visual"],
+        name="Geração Cortada",
+        mode="lines",
+        line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2),
+        fill="tonexty",
+        fillcolor="rgba(249, 115, 22, 0.20)",
+        connectgaps=False
+    ))
+
+    # Geração Limitada — o que efetivamente foi gerado pelos inversores
     fig.add_trace(go.Scatter(
         x=replay_df["DataHora"], y=replay_df["Geracao_Limitada"],
         name="Geração Limitada",
@@ -558,19 +580,7 @@ if generation_file and load_file:
         line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
     ))
 
-    # Geração Total (potencial) — continuidade da Limitada por cima,
-    # mostrando até onde a usina teria gerado sem o corte do GridZero.
-    # A área entre Limitada e Total é preenchida em laranja translúcido
-    # para destacar visualmente quanto está sendo cortado.
-    fig.add_trace(go.Scatter(
-        x=replay_df["DataHora"], y=replay_df["Geracao"],
-        name="Geração Cortada",
-        mode="lines",
-        line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2),
-        fill="tonexty",
-        fillcolor="rgba(249, 115, 22, 0.15)"
-    ))
-
+    # Energia da Light (versão visual com valores negativos quando há corte)
     fig.add_trace(go.Scatter(
         x=replay_df["DataHora"], y=replay_df["Energia_Light_Visual"],
         name="Energia Consumida da Light",
