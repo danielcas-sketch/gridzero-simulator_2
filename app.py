@@ -206,6 +206,8 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {
 # FUNÇÕES AUXILIARES
 # =========================================================
 
+_SPARK_COUNTER = [0]
+
 def sparkline_svg(values, color, width=180, height=30):
     """Gera SVG simples de sparkline a partir de uma lista de valores."""
     if values is None or len(values) < 2:
@@ -233,7 +235,8 @@ def sparkline_svg(values, color, width=180, height=30):
         + f" L {width},{height} Z"
     )
 
-    grad_id = f"grad-{color[1:]}-{abs(hash(tuple(vals))) % 100000}"
+    _SPARK_COUNTER[0] += 1
+    grad_id = f"grad-{_SPARK_COUNTER[0]}"
 
     svg = f'''
     <svg width="100%" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -272,6 +275,88 @@ def summary_box_html(title, value, color, cls, sub=""):
         <div class="summary-sub">{sub}</div>
     </div>
     """
+
+
+@st.cache_data(show_spinner=False)
+def carregar_e_processar(gen_bytes, load_bytes):
+    """Carrega CSVs, calcula GridZero e insere pontos de cruzamento.
+
+    Cacheada: só roda novamente se os bytes dos arquivos mudarem.
+    A lógica interna é a mesma versão validada anteriormente — o cache
+    garante que esse trabalho pesado só aconteça 1 vez por upload,
+    não a cada rerun do replay.
+    """
+    import io
+
+    gen_df = pd.read_csv(io.BytesIO(gen_bytes))
+    load_df = pd.read_csv(io.BytesIO(load_bytes))
+
+    gen_df.columns = ["DataHora", "Geracao"]
+    load_df.columns = ["DataHora", "Carga"]
+
+    gen_df["DataHora"] = pd.to_datetime(gen_df["DataHora"])
+    load_df["DataHora"] = pd.to_datetime(load_df["DataHora"])
+
+    df = pd.merge(gen_df, load_df, on="DataHora").sort_values("DataHora").reset_index(drop=True)
+
+    # ---------- GridZero ----------
+    df["Geracao_Limitada"] = df[["Geracao", "Carga"]].min(axis=1)
+    df["Geracao_Cortada"] = df["Geracao"] - df["Geracao_Limitada"]
+    df["Energia_Light"] = df["Carga"] - df["Geracao_Limitada"]
+    df["Energia_Light_Visual"] = df["Energia_Light"] - df["Geracao_Cortada"]
+
+    # ---------- Construir curva de corte com pontos de cruzamento ----------
+    # A linha laranja só aparece quando há corte. Para que ela "nasça" e
+    # "morra" exatamente em cima da linha azul (Carga), inserimos pontos
+    # artificiais nos instantes em que Geração cruza Carga.
+    rows = []
+    n = len(df)
+    for i in range(n):
+        rows.append(df.iloc[i].to_dict())
+        if i < n - 1:
+            a = df.iloc[i]
+            b = df.iloc[i + 1]
+            diff_a = a["Geracao"] - a["Carga"]
+            diff_b = b["Geracao"] - b["Carga"]
+            if diff_a * diff_b < 0:  # sinais opostos = cruzou
+                frac = diff_a / (diff_a - diff_b)
+                t_cross = a["DataHora"] + (b["DataHora"] - a["DataHora"]) * frac
+                carga_cross = a["Carga"] + (b["Carga"] - a["Carga"]) * frac
+                rows.append({
+                    "DataHora": t_cross,
+                    "Carga": carga_cross,
+                    "Geracao": carga_cross,
+                    "Geracao_Limitada": carga_cross,
+                    "Geracao_Cortada": 0.0,
+                    "Energia_Light": 0.0,
+                    "Energia_Light_Visual": 0.0,
+                })
+    out = pd.DataFrame(rows).reset_index(drop=True)
+
+    # Geracao_Cortada_Visual:
+    #   - vale Geracao quando há corte (> 0)
+    #   - vale None caso contrário (Plotly não desenha)
+    out["Geracao_Cortada_Visual"] = out.apply(
+        lambda row: row["Geracao"] if row["Geracao_Cortada"] > 0 else None,
+        axis=1
+    )
+
+    # Pontos de cruzamento "encostam" na linha azul (Carga = Geração no cruzamento)
+    # para que a curva laranja conecte visualmente com a linha azul.
+    for idx in range(len(out)):
+        if pd.isna(out.loc[idx, "Geracao_Cortada_Visual"]):
+            prev_corte = (
+                idx > 0
+                and pd.notna(out.loc[idx - 1, "Geracao_Cortada_Visual"])
+            )
+            next_corte = (
+                idx < len(out) - 1
+                and pd.notna(out.loc[idx + 1, "Geracao_Cortada_Visual"])
+            )
+            if prev_corte or next_corte:
+                out.loc[idx, "Geracao_Cortada_Visual"] = out.loc[idx, "Carga"]
+
+    return out
 
 
 def format_filesize(num_bytes):
@@ -407,94 +492,12 @@ with st.sidebar:
 
 if generation_file and load_file:
 
-    # ---------------- Load CSV ----------------
-    gen_df = pd.read_csv(generation_file)
-    load_df = pd.read_csv(load_file)
-
-    gen_df.columns = ["DataHora", "Geracao"]
-    load_df.columns = ["DataHora", "Carga"]
-
-    gen_df["DataHora"] = pd.to_datetime(gen_df["DataHora"])
-    load_df["DataHora"] = pd.to_datetime(load_df["DataHora"])
-
-    df = pd.merge(gen_df, load_df, on="DataHora").sort_values("DataHora").reset_index(drop=True)
-
-    # ---------------- GridZero ----------------
-    df["Geracao_Limitada"] = df[["Geracao", "Carga"]].min(axis=1)
-    df["Geracao_Cortada"] = df["Geracao"] - df["Geracao_Limitada"]
-    df["Energia_Light"] = df["Carga"] - df["Geracao_Limitada"]
-    # Coluna VISUAL: exportação evitada como valor negativo no gráfico
-    df["Energia_Light_Visual"] = df["Energia_Light"] - df["Geracao_Cortada"]
-
-    # =====================================================
-    # GERAÇÃO CORTADA VISUAL com PONTOS DE CRUZAMENTO
-    # =====================================================
-    # A linha laranja só deve aparecer quando há corte (Geração > Carga).
-    # Para que ela "nasça" e "morra" exatamente em cima da linha azul (Carga),
-    # inserimos pontos artificiais nos instantes em que Geração cruza a Carga.
-    # Esses pontos são calculados por interpolação linear entre dois pontos
-    # consecutivos do CSV onde ocorre a transição.
-
-    def construir_curva_corte(df_in):
-        """Retorna uma cópia do DataFrame com:
-        - linhas adicionais nos pontos de cruzamento Geração x Carga
-        - coluna Geracao_Cortada_Visual preenchida só durante o corte,
-          começando e terminando exatamente em cima da Carga
-        """
-        rows = []
-        n = len(df_in)
-        for i in range(n):
-            rows.append(df_in.iloc[i].to_dict())
-            if i < n - 1:
-                a = df_in.iloc[i]
-                b = df_in.iloc[i + 1]
-                # detecta se houve cruzamento entre a e b
-                diff_a = a["Geracao"] - a["Carga"]
-                diff_b = b["Geracao"] - b["Carga"]
-                if diff_a * diff_b < 0:  # sinais opostos = cruzou
-                    # interpolação linear para achar o tempo do cruzamento
-                    frac = diff_a / (diff_a - diff_b)
-                    t_cross = a["DataHora"] + (b["DataHora"] - a["DataHora"]) * frac
-                    carga_cross = a["Carga"] + (b["Carga"] - a["Carga"]) * frac
-                    rows.append({
-                        "DataHora": t_cross,
-                        "Carga": carga_cross,
-                        "Geracao": carga_cross,  # no cruzamento, Geração = Carga
-                        "Geracao_Limitada": carga_cross,
-                        "Geracao_Cortada": 0.0,
-                        "Energia_Light": 0.0,
-                        "Energia_Light_Visual": 0.0,
-                    })
-        out = pd.DataFrame(rows).reset_index(drop=True)
-        # Geracao_Cortada_Visual:
-        #   - vale Geracao quando há corte (>0)
-        #   - vale Carga nos pontos de cruzamento (continuidade visual)
-        #   - vale None caso contrário (Plotly não desenha)
-        def cortada_visual(row):
-            if row["Geracao_Cortada"] > 0:
-                return row["Geracao"]
-            # pontos de cruzamento: Geração == Carga e a vizinhança tem corte
-            return None
-        out["Geracao_Cortada_Visual"] = out.apply(cortada_visual, axis=1)
-        # Para que os pontos de cruzamento "encostem" na curva, marcamos eles
-        # com o valor da Carga (que é igual à Geração no cruzamento).
-        # Isso conecta visualmente a linha laranja com a linha azul.
-        for idx in range(len(out)):
-            if pd.isna(out.loc[idx, "Geracao_Cortada_Visual"]):
-                # se vizinho anterior OU posterior tem corte, este ponto é cruzamento
-                prev_corte = (
-                    idx > 0
-                    and pd.notna(out.loc[idx - 1, "Geracao_Cortada_Visual"])
-                )
-                next_corte = (
-                    idx < len(out) - 1
-                    and pd.notna(out.loc[idx + 1, "Geracao_Cortada_Visual"])
-                )
-                if prev_corte or next_corte:
-                    out.loc[idx, "Geracao_Cortada_Visual"] = out.loc[idx, "Carga"]
-        return out
-
-    df = construir_curva_corte(df)
+    # Carregamento e processamento cacheado.
+    # Só recalcula se os bytes dos arquivos mudarem.
+    df = carregar_e_processar(
+        generation_file.getvalue(),
+        load_file.getvalue()
+    )
 
     # ---------------- Replay state ----------------
     if st.session_state.index >= len(df):
