@@ -37,9 +37,15 @@ section[data-testid="stSidebar"] .stMarkdown h3 {
 
 /* Container principal */
 .block-container {
-    padding-top: 1.2rem;
+    padding-top: 4rem;
     padding-bottom: 1rem;
     max-width: 100%;
+}
+
+/* Esconde o header padrão do Streamlit que sobrepõe o conteúdo */
+header[data-testid="stHeader"] {
+    background-color: rgba(244, 246, 251, 0.8);
+    backdrop-filter: blur(6px);
 }
 
 /* Botão primário (Rodando Replay / Pausar) */
@@ -544,6 +550,7 @@ if generation_file and load_file:
         line=dict(color="#2563eb", width=2.5, shape="spline", smoothing=1.2)
     ))
 
+    # Geração Limitada — o que efetivamente foi gerado
     fig.add_trace(go.Scatter(
         x=replay_df["DataHora"], y=replay_df["Geracao_Limitada"],
         name="Geração Limitada",
@@ -551,11 +558,17 @@ if generation_file and load_file:
         line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
     ))
 
+    # Geração Total (potencial) — continuidade da Limitada por cima,
+    # mostrando até onde a usina teria gerado sem o corte do GridZero.
+    # A área entre Limitada e Total é preenchida em laranja translúcido
+    # para destacar visualmente quanto está sendo cortado.
     fig.add_trace(go.Scatter(
-        x=replay_df["DataHora"], y=replay_df["Geracao_Cortada"],
+        x=replay_df["DataHora"], y=replay_df["Geracao"],
         name="Geração Cortada",
         mode="lines",
-        line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2)
+        line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2),
+        fill="tonexty",
+        fillcolor="rgba(249, 115, 22, 0.15)"
     ))
 
     fig.add_trace(go.Scatter(
