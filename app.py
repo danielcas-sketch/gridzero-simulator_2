@@ -73,46 +73,59 @@ button[kind="secondary"]:hover {
 .kpi-card {
     background: white;
     border-radius: 16px;
-    padding: 16px 18px;
+    padding: 14px 16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-    height: 130px;
+    height: 160px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 .kpi-title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
-.kpi-value { font-size: 28px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
-.kpi-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
-.kpi-spark { margin-top: 4px; height: 30px; }
+.kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kpi-sub {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 4px;
+    line-height: 1.3;
+}
+.kpi-spark { margin-top: 4px; height: 28px; }
 
 .replay-card {
     background: white;
     border-radius: 16px;
-    padding: 16px 20px;
+    padding: 14px 18px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-    height: 130px;
+    height: 160px;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 .replay-clock { font-size: 14px; color: #6b7280; }
-.replay-time { font-size: 22px; font-weight: 700; color: #1f2937; margin-top: 4px; line-height: 1.15; }
+.replay-time { font-size: 19px; font-weight: 700; color: #1f2937; margin-top: 4px; line-height: 1.2; }
 .replay-sub { font-size: 12px; color: #9ca3af; margin-top: 6px; }
 
 .status-card {
     background: white;
     border-radius: 16px;
-    padding: 16px 20px;
+    padding: 14px 18px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-    height: 130px;
+    height: 160px;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 .status-label { font-size: 13px; font-weight: 600; color: #6b7280; }
 .status-main { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
-.status-icon { font-size: 28px; }
+.status-icon { font-size: 26px; }
 .status-text { font-size: 20px; font-weight: 700; }
 .status-sub { font-size: 13px; color: #6b7280; margin-top: 4px; }
 
@@ -280,6 +293,16 @@ def format_filesize(num_bytes):
 def fmt_int(v):
     """Formata número com separador de milhar (pt-BR)."""
     return f"{v:,.0f}".replace(",", ".")
+
+
+def fmt_energia(v_kwh):
+    """Formata energia escolhendo kWh ou MWh automaticamente.
+    Acima de 10.000 kWh (10 MWh), passa para MWh com 2 casas decimais.
+    """
+    if abs(v_kwh) >= 10_000:
+        v_mwh = v_kwh / 1000
+        return f"{v_mwh:,.2f} MWh".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{fmt_int(v_kwh)} kWh"
 
 
 @st.cache_data(show_spinner=False)
@@ -557,10 +580,10 @@ if generation_file and load_file:
                 f"{st.session_state.intervalo_fim.strftime('%d/%m/%Y')}"
             ),
             "header_sub": f"Período selecionado ({total_horas} h)",
-            "carga": (f"{fmt_int(carga_total_kwh)} kWh", "Energia consumida no período"),
-            "limitada": (f"{fmt_int(limitada_total_kwh)} kWh", "Energia gerada no período"),
-            "cortada": (f"{fmt_int(cortada_total_kwh)} kWh", "Energia cortada pelo GridZero"),
-            "light": (f"{fmt_int(light_total_kwh)} kWh", "Importada da Light"),
+            "carga": (fmt_energia(carga_total_kwh), "Energia consumida no período"),
+            "limitada": (fmt_energia(limitada_total_kwh), "Energia gerada no período"),
+            "cortada": (fmt_energia(cortada_total_kwh), "Energia cortada pelo GridZero"),
+            "light": (fmt_energia(light_total_kwh), "Importada da Light"),
             "status_ativo": horas_ativo > 0,
             "horas_ativo": horas_ativo,
             "total_horas": total_horas,
@@ -856,9 +879,9 @@ if generation_file and load_file:
         st.markdown(
             summary_box_html(
                 "Energia Importada (Light)",
-                f"{fmt_int(total_import_full)} kWh",
+                fmt_energia(total_import_full),
                 "#2563eb", "summary-blue",
-                "Total da simulação"
+                "Total de energia consumida da Light"
             ),
             unsafe_allow_html=True
         )
@@ -866,7 +889,7 @@ if generation_file and load_file:
         st.markdown(
             summary_box_html(
                 "Energia Exportação (Evitada)",
-                f"{fmt_int(energia_cortada_full)} kWh",
+                fmt_energia(energia_cortada_full),
                 "#dc2626", "summary-red",
                 "Total cortado pelo GridZero"
             ),
