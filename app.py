@@ -522,9 +522,19 @@ if generation_file and load_file:
 
     total_import_full = df_originais[df_originais["Energia_Light"] > 0]["Energia_Light"].sum()
     energia_cortada_full = df_originais["Geracao_Cortada"].sum()
+    energia_aproveitada_full = df_originais["Geracao_Limitada"].sum()
+    energia_geravel_full = df_originais["Geracao"].sum()
     max_corte_full = df_originais["Geracao_Cortada"].max() if len(df_originais) else 0
     horas_corte_full = (df_originais["Geracao_Cortada"] > 0).sum()
     total_horas_full = len(df_originais)
+
+    # Índice de Simultaneidade: quanto da geração potencial foi efetivamente aproveitada.
+    # 100% = usina perfeitamente dimensionada (tudo que gerou foi consumido)
+    # < 60% = usina superdimensionada (muito curtailment, ociosidade alta)
+    if energia_geravel_full > 0:
+        simultaneidade_full = (energia_aproveitada_full / energia_geravel_full) * 100
+    else:
+        simultaneidade_full = 0
 
     # =====================================================
     # GARANTIR LIMITES DO ÍNDICE
@@ -569,10 +579,17 @@ if generation_file and load_file:
         carga_total_kwh = intervalo_originais["Carga"].sum()
         limitada_total_kwh = intervalo_originais["Geracao_Limitada"].sum()
         cortada_total_kwh = intervalo_originais["Geracao_Cortada"].sum()
+        geravel_total_kwh = intervalo_originais["Geracao"].sum()
         light_total_kwh = intervalo_originais[intervalo_originais["Energia_Light"] > 0]["Energia_Light"].sum()
 
         horas_ativo = (intervalo_originais["Geracao_Cortada"] > 0).sum()
         total_horas = len(intervalo_originais)
+
+        # Simultaneidade do intervalo
+        if geravel_total_kwh > 0:
+            simultaneidade_intervalo = (limitada_total_kwh / geravel_total_kwh) * 100
+        else:
+            simultaneidade_intervalo = 0
 
         kpi_data = {
             "header_titulo": (
@@ -587,6 +604,7 @@ if generation_file and load_file:
             "status_ativo": horas_ativo > 0,
             "horas_ativo": horas_ativo,
             "total_horas": total_horas,
+            "simultaneidade": simultaneidade_intervalo,
         }
         spark_source = chart_df
 
@@ -612,9 +630,9 @@ if generation_file and load_file:
 
     cards_config = [
         ("Carga", "carga", "#2563eb", "Carga"),
-        ("Geração Limitada", "limitada", "#16a34a", "Geracao_Limitada"),
+        ("Geração Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
         ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
-        ("Energia da Light", "light", "#9333ea", "Energia_Light"),
+        ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
     ]
 
     for i, (titulo, key, cor, col_dados) in enumerate(cards_config):
@@ -636,18 +654,26 @@ if generation_file and load_file:
                 status_text, status_sub, status_color, status_icon = (
                     "Normal", "Sem limitação", "#64748b", "✓"
                 )
+            status_label = "Status"
         else:
-            # Modo Intervalo: status mostra percentual
-            pct = (kpi_data["horas_ativo"] / kpi_data["total_horas"] * 100) if kpi_data["total_horas"] else 0
-            status_text = f"{pct:.1f}%"
-            status_sub = f"{kpi_data['horas_ativo']} h de corte"
-            status_color = "#16a34a" if pct > 0 else "#64748b"
-            status_icon = "🛡️"
+            # Modo Intervalo: card mostra Simultaneidade do período
+            simul = kpi_data["simultaneidade"]
+            if simul >= 80:
+                status_color, status_icon = "#16a34a", "🛡️"
+                status_sub = "Bem dimensionada"
+            elif simul >= 60:
+                status_color, status_icon = "#ca8a04", "⚡"
+                status_sub = "Dimensionamento intermediário"
+            else:
+                status_color, status_icon = "#dc2626", "⚠️"
+                status_sub = "Superdimensionada"
+            status_text = f"{simul:.1f}%"
+            status_label = "Simultaneidade"
 
         st.markdown(
             f"""
             <div class="status-card">
-                <div class="status-label">Status</div>
+                <div class="status-label">{status_label}</div>
                 <div class="status-main">
                     <div class="status-icon">{status_icon}</div>
                     <div class="status-text" style="color:{status_color}">{status_text}</div>
@@ -804,14 +830,14 @@ if generation_file and load_file:
 
     fig.add_trace(go.Scatter(
         x=chart_df["DataHora"], y=chart_df["Geracao_Limitada"],
-        name="Geração Limitada",
+        name="Geração Aproveitada",
         mode="lines",
         line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
     ))
 
     fig.add_trace(go.Scatter(
         x=chart_df["DataHora"], y=chart_df["Energia_Light_Visual"],
-        name="Energia Consumida da Light",
+        name="Energia da Rede",
         mode="lines",
         line=dict(color="#9333ea", width=2.5, shape="spline", smoothing=1.2)
     ))
@@ -874,7 +900,7 @@ if generation_file and load_file:
 
     pct_total = (horas_corte_full / total_horas_full * 100) if total_horas_full else 0
 
-    s1, s2, s3, s4 = st.columns(4)
+    s1, s2, s3, s4, s5 = st.columns(5)
     with s1:
         st.markdown(
             summary_box_html(
@@ -915,6 +941,30 @@ if generation_file and load_file:
             ),
             unsafe_allow_html=True
         )
+    with s5:
+        # Avaliação qualitativa do índice
+        if simultaneidade_full >= 80:
+            simul_class = "summary-green"
+            simul_color = "#16a34a"
+            simul_label = "Usina bem dimensionada"
+        elif simultaneidade_full >= 60:
+            simul_class = "summary-yellow"
+            simul_color = "#ca8a04"
+            simul_label = "Dimensionamento intermediário"
+        else:
+            simul_class = "summary-red"
+            simul_color = "#dc2626"
+            simul_label = "Usina superdimensionada"
+
+        st.markdown(
+            summary_box_html(
+                "Simultaneidade",
+                f"{simultaneidade_full:.1f}%",
+                simul_color, simul_class,
+                simul_label
+            ),
+            unsafe_allow_html=True
+        )
 
     # =====================================================
     # TABELA
@@ -937,9 +987,9 @@ if generation_file and load_file:
         "Geracao_Cortada", "Energia_Light", "Status"
     ]].rename(columns={
         "Carga": "Carga (kW)",
-        "Geracao_Limitada": "Geração Limitada (kW)",
+        "Geracao_Limitada": "Geração Aproveitada (kW)",
         "Geracao_Cortada": "Geração Cortada (kW)",
-        "Energia_Light": "Energia Consumida da Light (kW)"
+        "Energia_Light": "Energia da Rede (kW)"
     })
 
     st.dataframe(
