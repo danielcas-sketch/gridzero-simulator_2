@@ -729,21 +729,27 @@ if generation_file and load_file:
             )
 
     else:
-        # Modo Intervalo: duas linhas de cards
-        # ── Linha 1: Período + 4 cards de energia ──
-        cols_linha1 = st.columns([1.5, 1.2, 1.2, 1.2, 1.2])
+        # Modo Intervalo: duas linhas de cards com labels separadores
 
-        with cols_linha1[0]:
-            st.markdown(
-                f"""
-                <div class="replay-card">
-                    <div class="replay-clock">🕒</div>
-                    <div class="replay-time">{kpi_data['header_titulo']}</div>
-                    <div class="replay-sub">{kpi_data['header_sub']}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        # ── Label do período ──
+        st.markdown(
+            f"""
+            <div style="font-size:14px; font-weight:600; color:#374151; margin-bottom:4px;">
+                🕒 Período selecionado: <span style="color:#2563eb;">{kpi_data['header_titulo']}</span>
+                <span style="font-size:12px; color:#6b7280; font-weight:400;"> — {kpi_data['header_sub']}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # ── Linha 1: Energia ──
+        st.markdown(
+            '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:10px 0 6px 0;">'
+            '⚡ Energia (kWh / MWh)</div>',
+            unsafe_allow_html=True
+        )
+
+        cols_linha1 = st.columns([1, 1, 1, 1])
 
         def spark_data(col, n=40):
             return spark_source[col].tail(n).tolist()
@@ -756,7 +762,7 @@ if generation_file and load_file:
         ]
 
         for i, (titulo, key, cor, col_dados) in enumerate(cards_config_linha1):
-            with cols_linha1[i + 1]:
+            with cols_linha1[i]:
                 spark = sparkline_svg(spark_data(col_dados), cor)
                 valor, sub = kpi_data[key]
                 st.markdown(
@@ -764,7 +770,13 @@ if generation_file and load_file:
                     unsafe_allow_html=True
                 )
 
-        # ── Linha 2: 3 indicadores percentuais ──
+        # ── Linha 2: Indicadores ──
+        st.markdown(
+            '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
+            '📊 Indicadores de Desempenho</div>',
+            unsafe_allow_html=True
+        )
+
         cols_linha2 = st.columns([1, 1, 1])
 
         # Simultaneidade
