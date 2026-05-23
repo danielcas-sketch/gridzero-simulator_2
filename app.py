@@ -1062,4 +1062,3 @@ else:
         "📂 Faça o upload dos arquivos **geracao.csv** e **consumo.csv** "
         "na barra lateral para iniciar."
     )
-
