@@ -632,8 +632,15 @@ if generation_file and load_file:
         # Simultaneidade do intervalo
         if geravel_total_kwh > 0:
             simultaneidade_intervalo = (limitada_total_kwh / geravel_total_kwh) * 100
+            taxa_desperdicio_intervalo = (cortada_total_kwh / geravel_total_kwh) * 100
         else:
             simultaneidade_intervalo = 0
+            taxa_desperdicio_intervalo = 0
+
+        if carga_total_kwh > 0:
+            fator_cobertura_intervalo = (limitada_total_kwh / carga_total_kwh) * 100
+        else:
+            fator_cobertura_intervalo = 0
 
         kpi_data = {
             "header_titulo": (
@@ -649,47 +656,54 @@ if generation_file and load_file:
             "horas_ativo": horas_ativo,
             "total_horas": total_horas,
             "simultaneidade": simultaneidade_intervalo,
+            "fator_cobertura": fator_cobertura_intervalo,
+            "taxa_desperdicio": taxa_desperdicio_intervalo,
         }
         spark_source = chart_df
 
     # =====================================================
     # HEADER — Card de período + KPIs + Status
     # =====================================================
-    cols = st.columns([1.7, 1.3, 1.3, 1.3, 1.3, 1.3])
+    # =====================================================
+    # HEADER — Cards conforme modo
+    # =====================================================
 
-    with cols[0]:
-        st.markdown(
-            f"""
-            <div class="replay-card">
-                <div class="replay-clock">🕒</div>
-                <div class="replay-time">{kpi_data['header_titulo']}</div>
-                <div class="replay-sub">{kpi_data['header_sub']}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    if modo == "Replay":
+        # Modo Replay: uma única linha com 6 cards
+        cols = st.columns([1.7, 1.3, 1.3, 1.3, 1.3, 1.3])
 
-    def spark_data(col, n=40):
-        return spark_source[col].tail(n).tolist()
-
-    cards_config = [
-        ("Carga", "carga", "#2563eb", "Carga"),
-        ("Geração Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
-        ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
-        ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
-    ]
-
-    for i, (titulo, key, cor, col_dados) in enumerate(cards_config):
-        with cols[i + 1]:
-            spark = sparkline_svg(spark_data(col_dados), cor)
-            valor, sub = kpi_data[key]
+        with cols[0]:
             st.markdown(
-                kpi_card_html(titulo, valor, cor, sub, spark),
+                f"""
+                <div class="replay-card">
+                    <div class="replay-clock">🕒</div>
+                    <div class="replay-time">{kpi_data['header_titulo']}</div>
+                    <div class="replay-sub">{kpi_data['header_sub']}</div>
+                </div>
+                """,
                 unsafe_allow_html=True
             )
 
-    with cols[5]:
-        if modo == "Replay":
+        def spark_data(col, n=40):
+            return spark_source[col].tail(n).tolist()
+
+        cards_config = [
+            ("Carga", "carga", "#2563eb", "Carga"),
+            ("Geração Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
+            ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
+            ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
+        ]
+
+        for i, (titulo, key, cor, col_dados) in enumerate(cards_config):
+            with cols[i + 1]:
+                spark = sparkline_svg(spark_data(col_dados), cor)
+                valor, sub = kpi_data[key]
+                st.markdown(
+                    kpi_card_html(titulo, valor, cor, sub, spark),
+                    unsafe_allow_html=True
+                )
+
+        with cols[5]:
             if kpi_data["status_ativo"]:
                 status_text, status_sub, status_color, status_icon = (
                     "GridZero Ativo", "Sem exportação", "#16a34a", "🛡️"
@@ -699,34 +713,110 @@ if generation_file and load_file:
                     "Normal", "Sem limitação", "#64748b", "✓"
                 )
             status_label = "Status"
-        else:
-            # Modo Intervalo: card mostra Simultaneidade do período
-            simul = kpi_data["simultaneidade"]
-            if simul >= 80:
-                status_color, status_icon = "#16a34a", "🛡️"
-                status_sub = "Bem dimensionada"
-            elif simul >= 60:
-                status_color, status_icon = "#ca8a04", "⚡"
-                status_sub = "Dimensionamento intermediário"
-            else:
-                status_color, status_icon = "#dc2626", "⚠️"
-                status_sub = "Superdimensionada"
-            status_text = f"{simul:.1f}%"
-            status_label = "Simultaneidade"
 
-        st.markdown(
-            f"""
-            <div class="status-card">
-                <div class="status-label">{status_label}</div>
-                <div class="status-main">
-                    <div class="status-icon">{status_icon}</div>
-                    <div class="status-text" style="color:{status_color}">{status_text}</div>
+            st.markdown(
+                f"""
+                <div class="status-card">
+                    <div class="status-label">{status_label}</div>
+                    <div class="status-main">
+                        <div class="status-icon">{status_icon}</div>
+                        <div class="status-text" style="color:{status_color}">{status_text}</div>
+                    </div>
+                    <div class="status-sub">{status_sub}</div>
                 </div>
-                <div class="status-sub">{status_sub}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+                """,
+                unsafe_allow_html=True
+            )
+
+    else:
+        # Modo Intervalo: duas linhas de cards
+        # ── Linha 1: Período + 4 cards de energia ──
+        cols_linha1 = st.columns([1.5, 1.2, 1.2, 1.2, 1.2])
+
+        with cols_linha1[0]:
+            st.markdown(
+                f"""
+                <div class="replay-card">
+                    <div class="replay-clock">🕒</div>
+                    <div class="replay-time">{kpi_data['header_titulo']}</div>
+                    <div class="replay-sub">{kpi_data['header_sub']}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        def spark_data(col, n=40):
+            return spark_source[col].tail(n).tolist()
+
+        cards_config_linha1 = [
+            ("Carga", "carga", "#2563eb", "Carga"),
+            ("Geração Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
+            ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
+            ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
+        ]
+
+        for i, (titulo, key, cor, col_dados) in enumerate(cards_config_linha1):
+            with cols_linha1[i + 1]:
+                spark = sparkline_svg(spark_data(col_dados), cor)
+                valor, sub = kpi_data[key]
+                st.markdown(
+                    kpi_card_html(titulo, valor, cor, sub, spark),
+                    unsafe_allow_html=True
+                )
+
+        # ── Linha 2: 3 indicadores percentuais ──
+        cols_linha2 = st.columns([1, 1, 1])
+
+        # Simultaneidade
+        simul = kpi_data["simultaneidade"]
+        if simul >= 80:
+            sim_color, sim_icon, sim_text = "#16a34a", "🛡️", "Bem dimensionada"
+        elif simul >= 60:
+            sim_color, sim_icon, sim_text = "#ca8a04", "⚡", "Dimensionamento intermediário"
+        else:
+            sim_color, sim_icon, sim_text = "#dc2626", "⚠️", "Superdimensionada"
+
+        with cols_linha2[0]:
+            st.markdown(
+                kpi_card_html(
+                    "Simultaneidade",
+                    f"{simul:.1f}%",
+                    sim_color,
+                    f"{sim_icon} {sim_text}",
+                    ""
+                ),
+                unsafe_allow_html=True
+            )
+
+        # Fator de Cobertura
+        fc = kpi_data["fator_cobertura"]
+        fc_color, fc_icon, fc_text = classificar_fator_cobertura(fc)
+        with cols_linha2[1]:
+            st.markdown(
+                kpi_card_html(
+                    "Fator de Cobertura",
+                    f"{fc:.1f}%",
+                    fc_color,
+                    f"{fc_icon} {fc_text}",
+                    ""
+                ),
+                unsafe_allow_html=True
+            )
+
+        # Taxa de Desperdício
+        td = kpi_data["taxa_desperdicio"]
+        td_color, td_icon, td_text = classificar_taxa_desperdicio(td)
+        with cols_linha2[2]:
+            st.markdown(
+                kpi_card_html(
+                    "Taxa de Desperdício",
+                    f"{td:.1f}%",
+                    td_color,
+                    f"{td_icon} {td_text}",
+                    ""
+                ),
+                unsafe_allow_html=True
+            )
 
     # =====================================================
     # SEÇÃO DO GRÁFICO — Toggle de modo + Controles
@@ -942,7 +1032,43 @@ if generation_file and load_file:
         unsafe_allow_html=True
     )
 
-    # Classificações qualitativas dos novos índices
+    # ── Linha 1: Valores de energia ──
+    st.markdown(
+        '<div style="font-size:13px; font-weight:600; color:#6b7280; margin-bottom:6px;">'
+        '⚡ Energia (kWh / MWh)</div>',
+        unsafe_allow_html=True
+    )
+
+    r1, r2 = st.columns(2)
+    with r1:
+        st.markdown(
+            summary_box_html(
+                "Energia Importada (Light)",
+                fmt_energia(total_import_full),
+                "#2563eb", "summary-blue",
+                "Total de energia consumida da concessionária"
+            ),
+            unsafe_allow_html=True
+        )
+    with r2:
+        st.markdown(
+            summary_box_html(
+                "Energia Exportação (Evitada)",
+                fmt_energia(energia_cortada_full),
+                "#dc2626", "summary-red",
+                "Total de geração cortada pelo GridZero"
+            ),
+            unsafe_allow_html=True
+        )
+
+    # ── Linha 2: Indicadores percentuais ──
+    st.markdown(
+        '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
+        '📊 Indicadores de Desempenho</div>',
+        unsafe_allow_html=True
+    )
+
+    # Classificações qualitativas
     fc_color, fc_icon, fc_label = classificar_fator_cobertura(fator_cobertura_full)
     td_color, td_icon, td_label = classificar_taxa_desperdicio(taxa_desperdicio_full)
 
@@ -959,54 +1085,34 @@ if generation_file and load_file:
         simul_color = "#dc2626"
         simul_label = "Usina superdimensionada"
 
-    s1, s2, s3, s4, s5 = st.columns(5)
+    s1, s2, s3 = st.columns(3)
     with s1:
         st.markdown(
             summary_box_html(
-                "Energia Importada (Light)",
-                fmt_energia(total_import_full),
-                "#2563eb", "summary-blue",
-                "Total de energia consumida da Light"
+                "Simultaneidade",
+                f"{simultaneidade_full:.1f}%",
+                simul_color, simul_class,
+                f"🛡️ {simul_label}"
             ),
             unsafe_allow_html=True
         )
     with s2:
         st.markdown(
             summary_box_html(
-                "Energia Exportação (Evitada)",
-                fmt_energia(energia_cortada_full),
-                "#dc2626", "summary-red",
-                "Total cortado pelo GridZero"
+                "Fator de Cobertura",
+                f"{fator_cobertura_full:.1f}%",
+                fc_color, "summary-green",
+                f"{fc_icon} {fc_label}"
             ),
             unsafe_allow_html=True
         )
     with s3:
         st.markdown(
             summary_box_html(
-                "Fator de Cobertura",
-                f"{fator_cobertura_full:.1f}%",
-                fc_color, "summary-green",
-                fc_icon + " " + fc_label
-            ),
-            unsafe_allow_html=True
-        )
-    with s4:
-        st.markdown(
-            summary_box_html(
                 "Taxa de Desperdício",
                 f"{taxa_desperdicio_full:.1f}%",
                 td_color, "summary-orange",
-                td_icon + " " + td_label
-            ),
-            unsafe_allow_html=True
-        )
-    with s5:
-        st.markdown(
-            summary_box_html(
-                "Simultaneidade",
-                f"{simultaneidade_full:.1f}%",
-                simul_color, simul_class,
-                simul_label
+                f"{td_icon} {td_label}"
             ),
             unsafe_allow_html=True
         )
