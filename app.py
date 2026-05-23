@@ -649,7 +649,7 @@ if generation_file and load_file:
             ),
             "header_sub": f"Período selecionado ({total_horas} h)",
             "carga": (fmt_energia(carga_total_kwh), "Energia consumida no período"),
-            "limitada": (fmt_energia(limitada_total_kwh), "Energia consumida da UFV"),
+            "limitada": (fmt_energia(limitada_total_kwh), "Energia fornecida pela UFV"),
             "cortada": (fmt_energia(cortada_total_kwh), "Energia cortada pelo GridZero"),
             "light": (fmt_energia(light_total_kwh), "Energia consumida da rede"),
             "status_ativo": horas_ativo > 0,
@@ -1051,7 +1051,7 @@ if generation_file and load_file:
         unsafe_allow_html=True
     )
 
-    r1, r2 = st.columns(2)
+    r1, r2, r3 = st.columns(3)
     with r1:
         st.markdown(
             summary_box_html(
@@ -1063,6 +1063,16 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
     with r2:
+        st.markdown(
+            summary_box_html(
+                "Energia Aproveitada",
+                fmt_energia(energia_aproveitada_full),
+                "#16a34a", "summary-green",
+                "Energia fornecida pela UFV efetivamente consumida"
+            ),
+            unsafe_allow_html=True
+        )
+    with r3:
         st.markdown(
             summary_box_html(
                 "Energia Cortada",
