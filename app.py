@@ -170,7 +170,6 @@ button[kind="secondary"]:hover {
 .summary-red { background: #fef2f2; }
 .summary-green { background: #f0fdf4; }
 .summary-yellow { background: #fefce8; }
-.summary-orange { background: #fff7ed; }
 .summary-title { font-size: 14px; font-weight: 600; }
 .summary-value { font-size: 28px; font-weight: 700; margin-top: 8px; line-height: 1.1; }
 .summary-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
@@ -304,36 +303,6 @@ def fmt_energia(v_kwh):
         v_mwh = v_kwh / 1000
         return f"{v_mwh:,.2f} MWh".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{fmt_int(v_kwh)} kWh"
-
-
-def classificar_fator_cobertura(pct):
-    """Retorna (cor, icone, texto_diagnostico) para o Fator de Cobertura."""
-    if pct < 25:
-        return ("#dc2626", "⚠️", "Fração pequena — típico de indústrias 24/7 ou perfil noturno")
-    elif pct < 30:
-        return ("#f97316", "⚡", "Cobertura baixa — maior parte da energia vem da concessionária")
-    elif pct < 45:
-        return ("#ca8a04", "🔶", "Padrão comum — residências e perfis mistos com picos fora do sol")
-    elif pct < 50:
-        return ("#65a30d", "🔷", "Boa cobertura — próximo do teto típico do Grid Zero")
-    elif pct <= 65:
-        return ("#16a34a", "✅", "Excelente — típico de comércios e indústrias de turno único")
-    else:
-        return ("#7c3aed", "🔬", "Acima do teto físico — revise os dados de carga")
-
-
-def classificar_taxa_desperdicio(pct):
-    """Retorna (cor, icone, texto_diagnostico) para a Taxa de Desperdício."""
-    if pct < 10:
-        return ("#16a34a", "✅", "Excelente — usina muito bem dimensionada")
-    elif pct <= 20:
-        return ("#65a30d", "🔷", "Aceitável — curtailment dentro da faixa econômica viável")
-    elif pct <= 30:
-        return ("#ca8a04", "🔶", "Atenção — payback pode ser prejudicado")
-    elif pct <= 40:
-        return ("#f97316", "⚡", "Alerta — LCOE elevado, viabilidade comprometida")
-    else:
-        return ("#dc2626", "⚠️", "Crítico — capacidade instalada gerando pouca economia")
 
 
 @st.cache_data(show_spinner=False)
@@ -555,30 +524,26 @@ if generation_file and load_file:
     energia_cortada_full = df_originais["Geracao_Cortada"].sum()
     energia_aproveitada_full = df_originais["Geracao_Limitada"].sum()
     energia_geravel_full = df_originais["Geracao"].sum()
-    energia_consumida_full = df_originais["Carga"].sum()
+    carga_total_full = df_originais["Carga"].sum()
     max_corte_full = df_originais["Geracao_Cortada"].max() if len(df_originais) else 0
-    horas_corte_full = (df_originais["Geracao_Cortada"] > 0).sum()
     total_horas_full = len(df_originais)
 
-    # Fator de Cobertura: quanto do consumo total foi suprido pela geração solar
-    if energia_consumida_full > 0:
-        fator_cobertura_full = (energia_aproveitada_full / energia_consumida_full) * 100
-    else:
-        fator_cobertura_full = 0
+    # ---------- Índices analíticos do projeto ----------
 
-    # Taxa de Desperdício: energia cortada / energia gerável (inverso da simultaneidade)
-    if energia_geravel_full > 0:
-        taxa_desperdicio_full = (energia_cortada_full / energia_geravel_full) * 100
-    else:
-        taxa_desperdicio_full = 0
-
-    # Índice de Simultaneidade: quanto da geração potencial foi efetivamente aproveitada.
-    # 100% = usina perfeitamente dimensionada (tudo que gerou foi consumido)
-    # < 60% = usina superdimensionada (muito curtailment, ociosidade alta)
+    # Simultaneidade: quanto da geração potencial foi efetivamente aproveitada.
     if energia_geravel_full > 0:
         simultaneidade_full = (energia_aproveitada_full / energia_geravel_full) * 100
     else:
         simultaneidade_full = 0
+
+    # Fator de Cobertura: quanto da carga foi suprido pela geração solar.
+    if carga_total_full > 0:
+        cobertura_full = (energia_aproveitada_full / carga_total_full) * 100
+    else:
+        cobertura_full = 0
+
+    # Taxa de Desperdício: complementar da simultaneidade.
+    desperdicio_full = 100 - simultaneidade_full if energia_geravel_full > 0 else 0
 
     # =====================================================
     # GARANTIR LIMITES DO ÍNDICE
@@ -942,22 +907,7 @@ if generation_file and load_file:
         unsafe_allow_html=True
     )
 
-    # Classificações qualitativas dos novos índices
-    fc_color, fc_icon, fc_label = classificar_fator_cobertura(fator_cobertura_full)
-    td_color, td_icon, td_label = classificar_taxa_desperdicio(taxa_desperdicio_full)
-
-    if simultaneidade_full >= 80:
-        simul_class = "summary-green"
-        simul_color = "#16a34a"
-        simul_label = "Usina bem dimensionada"
-    elif simultaneidade_full >= 60:
-        simul_class = "summary-yellow"
-        simul_color = "#ca8a04"
-        simul_label = "Dimensionamento intermediário"
-    else:
-        simul_class = "summary-red"
-        simul_color = "#dc2626"
-        simul_label = "Usina superdimensionada"
+    pct_total = (horas_corte_full / total_horas_full * 100) if total_horas_full else 0
 
     s1, s2, s3, s4, s5 = st.columns(5)
     with s1:
@@ -983,24 +933,38 @@ if generation_file and load_file:
     with s3:
         st.markdown(
             summary_box_html(
-                "Fator de Cobertura",
-                f"{fator_cobertura_full:.1f}%",
-                fc_color, "summary-green",
-                fc_icon + " " + fc_label
+                "Máxima Exportação Evitada",
+                f"{fmt_int(max_corte_full)} kW",
+                "#16a34a", "summary-green",
+                "Pico de geração cortada"
             ),
             unsafe_allow_html=True
         )
     with s4:
         st.markdown(
             summary_box_html(
-                "Taxa de Desperdício",
-                f"{taxa_desperdicio_full:.1f}%",
-                td_color, "summary-orange",
-                td_icon + " " + td_label
+                "Horas com Corte (GridZero Ativo)",
+                f"{fmt_int(horas_corte_full)} h",
+                "#9333ea", "summary-yellow",
+                f"{pct_total:.1f}% das {total_horas_full} h totais"
             ),
             unsafe_allow_html=True
         )
     with s5:
+        # Avaliação qualitativa do índice
+        if simultaneidade_full >= 80:
+            simul_class = "summary-green"
+            simul_color = "#16a34a"
+            simul_label = "Usina bem dimensionada"
+        elif simultaneidade_full >= 60:
+            simul_class = "summary-yellow"
+            simul_color = "#ca8a04"
+            simul_label = "Dimensionamento intermediário"
+        else:
+            simul_class = "summary-red"
+            simul_color = "#dc2626"
+            simul_label = "Usina superdimensionada"
+
         st.markdown(
             summary_box_html(
                 "Simultaneidade",
