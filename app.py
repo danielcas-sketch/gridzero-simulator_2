@@ -307,33 +307,27 @@ def fmt_energia(v_kwh):
 
 
 def classificar_fator_cobertura(pct):
-    """Retorna (cor, icone, texto_diagnostico) para o Fator de Cobertura."""
-    if pct < 25:
-        return ("#dc2626", "⚠️", "Fração pequena — típico de indústrias 24/7 ou perfil noturno")
-    elif pct < 30:
-        return ("#f97316", "⚡", "Cobertura baixa — maior parte da energia vem da concessionária")
-    elif pct < 45:
-        return ("#ca8a04", "🔶", "Padrão comum — residências e perfis mistos com picos fora do sol")
-    elif pct < 50:
-        return ("#65a30d", "🔷", "Boa cobertura — próximo do teto típico do Grid Zero")
-    elif pct <= 65:
-        return ("#16a34a", "✅", "Excelente — típico de comércios e indústrias de turno único")
+    """Retorna (cor, icone, texto_diagnostico) para o Fator de Cobertura.
+    Mede a redução na conta de energia do cliente.
+    """
+    if pct >= 50:
+        return ("#16a34a", "✅", "Excelente — Redução máxima possível sem uso de baterias.")
+    elif pct >= 30:
+        return ("#ca8a04", "🔶", "Padrão comum — Bom suprimento diurno, típico de perfis mistos.")
     else:
-        return ("#7c3aed", "🔬", "Acima do teto físico — revise os dados de carga")
+        return ("#dc2626", "⚠️", "Baixo impacto — Consumo predominante à noite ou usina pequena.")
 
 
 def classificar_taxa_desperdicio(pct):
-    """Retorna (cor, icone, texto_diagnostico) para a Taxa de Desperdício."""
-    if pct < 10:
-        return ("#16a34a", "✅", "Excelente — usina muito bem dimensionada")
-    elif pct <= 20:
-        return ("#65a30d", "🔷", "Aceitável — curtailment dentro da faixa econômica viável")
+    """Retorna (cor, icone, texto_diagnostico) para a Taxa de Desperdício.
+    Mede a energia jogada fora (curtailment).
+    """
+    if pct < 15:
+        return ("#16a34a", "✅", "Eficiente — Perdas mínimas, cenário ideal para um Payback rápido.")
     elif pct <= 30:
-        return ("#ca8a04", "🔶", "Atenção — payback pode ser prejudicado")
-    elif pct <= 40:
-        return ("#f97316", "⚡", "Alerta — LCOE elevado, viabilidade comprometida")
+        return ("#ca8a04", "🔶", "Moderado — Nível de corte dentro da normalidade para Grid Zero.")
     else:
-        return ("#dc2626", "⚠️", "Crítico — capacidade instalada gerando pouca economia")
+        return ("#dc2626", "⚠️", "Crítico — Alta perda de energia, o que prejudica o retorno financeiro.")
 
 
 @st.cache_data(show_spinner=False)
@@ -779,14 +773,14 @@ if generation_file and load_file:
 
         cols_linha2 = st.columns([1, 1, 1])
 
-        # Simultaneidade
+        # Simultaneidade — Mede a eficiência do uso da usina
         simul = kpi_data["simultaneidade"]
         if simul >= 80:
-            sim_color, sim_icon, sim_text = "#16a34a", "🛡️", "Bem dimensionada"
+            sim_color, sim_icon, sim_text = "#16a34a", "✅", "Excelente — Máximo aproveitamento da capacidade de geração."
         elif simul >= 60:
-            sim_color, sim_icon, sim_text = "#ca8a04", "⚡", "Dimensionamento intermediário"
+            sim_color, sim_icon, sim_text = "#ca8a04", "🔶", "Adequado — Bom equilíbrio de uso da usina durante o dia."
         else:
-            sim_color, sim_icon, sim_text = "#dc2626", "⚠️", "Superdimensionada"
+            sim_color, sim_icon, sim_text = "#dc2626", "⚠️", "Superdimensionado — Boa parte da capacidade do inversor está ociosa."
 
         with cols_linha2[0]:
             st.markdown(
@@ -1097,15 +1091,15 @@ if generation_file and load_file:
     if simultaneidade_full >= 80:
         simul_class = "summary-green"
         simul_color = "#16a34a"
-        simul_label = "Usina bem dimensionada"
+        simul_label = "Excelente — Máximo aproveitamento da capacidade de geração."
     elif simultaneidade_full >= 60:
         simul_class = "summary-yellow"
         simul_color = "#ca8a04"
-        simul_label = "Dimensionamento intermediário"
+        simul_label = "Adequado — Bom equilíbrio de uso da usina durante o dia."
     else:
         simul_class = "summary-red"
         simul_color = "#dc2626"
-        simul_label = "Usina superdimensionada"
+        simul_label = "Superdimensionado — Boa parte da capacidade do inversor está ociosa."
 
     s1, s2, s3 = st.columns(3)
     with s1:
