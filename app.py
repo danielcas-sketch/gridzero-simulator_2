@@ -649,9 +649,9 @@ if generation_file and load_file:
             ),
             "header_sub": f"Período selecionado ({total_horas} h)",
             "carga": (fmt_energia(carga_total_kwh), "Energia consumida no período"),
-            "limitada": (fmt_energia(limitada_total_kwh), "Energia gerada no período"),
+            "limitada": (fmt_energia(limitada_total_kwh), "Energia consumida da UFV"),
             "cortada": (fmt_energia(cortada_total_kwh), "Energia cortada pelo GridZero"),
-            "light": (fmt_energia(light_total_kwh), "Importada da Light"),
+            "light": (fmt_energia(light_total_kwh), "Energia consumida da rede"),
             "status_ativo": horas_ativo > 0,
             "horas_ativo": horas_ativo,
             "total_horas": total_horas,
@@ -689,7 +689,7 @@ if generation_file and load_file:
 
         cards_config = [
             ("Carga", "carga", "#2563eb", "Carga"),
-            ("Geração Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
+            ("Energia Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
             ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
             ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
         ]
@@ -756,7 +756,7 @@ if generation_file and load_file:
 
         cards_config_linha1 = [
             ("Carga", "carga", "#2563eb", "Carga"),
-            ("Geração Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
+            ("Energia Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
             ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
             ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
         ]
@@ -976,7 +976,7 @@ if generation_file and load_file:
 
     fig.add_trace(go.Scatter(
         x=chart_df["DataHora"], y=chart_df["Geracao_Limitada"],
-        name="Geração Aproveitada",
+        name="Energia Aproveitada",
         mode="lines",
         line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
     ))
@@ -1065,10 +1065,10 @@ if generation_file and load_file:
     with r2:
         st.markdown(
             summary_box_html(
-                "Energia Exportação (Evitada)",
+                "Energia Cortada",
                 fmt_energia(energia_cortada_full),
                 "#dc2626", "summary-red",
-                "Total de geração cortada pelo GridZero"
+                "Energia desperdiçada pelo GridZero"
             ),
             unsafe_allow_html=True
         )
@@ -1150,7 +1150,7 @@ if generation_file and load_file:
         "Geracao_Cortada", "Energia_Light", "Status"
     ]].rename(columns={
         "Carga": "Carga (kW)",
-        "Geracao_Limitada": "Geração Aproveitada (kW)",
+        "Geracao_Limitada": "Energia Aproveitada (kW)",
         "Geracao_Cortada": "Geração Cortada (kW)",
         "Energia_Light": "Energia da Rede (kW)"
     })
