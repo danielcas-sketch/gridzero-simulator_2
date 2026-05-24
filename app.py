@@ -793,6 +793,12 @@ if generation_file and load_file:
                 ),
                 unsafe_allow_html=True
             )
+            st.markdown(
+                '<div style="font-size:11px; color:#6b7280; margin-top:-8px; padding:0 4px; line-height:1.4;">'
+                'É a porcentagem de toda a energia gerada pela usina que é consumida instantaneamente no local.'
+                '</div>',
+                unsafe_allow_html=True
+            )
 
         # Fator de Cobertura
         fc = kpi_data["fator_cobertura"]
@@ -808,6 +814,12 @@ if generation_file and load_file:
                 ),
                 unsafe_allow_html=True
             )
+            st.markdown(
+                '<div style="font-size:11px; color:#6b7280; margin-top:-8px; padding:0 4px; line-height:1.4;">'
+                'É a porcentagem de todo o consumo de energia do local que é suprida diretamente pela usina solar.'
+                '</div>',
+                unsafe_allow_html=True
+            )
 
         # Taxa de Desperdício
         td = kpi_data["taxa_desperdicio"]
@@ -821,6 +833,12 @@ if generation_file and load_file:
                     f"{td_icon} {td_text}",
                     ""
                 ),
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                '<div style="font-size:11px; color:#6b7280; margin-top:-8px; padding:0 4px; line-height:1.4;">'
+                'É a porcentagem da energia que a usina era capaz de gerar, mas precisou ser descartada por falta de consumo.'
+                '</div>',
                 unsafe_allow_html=True
             )
 
@@ -1112,6 +1130,12 @@ if generation_file and load_file:
             ),
             unsafe_allow_html=True
         )
+        st.markdown(
+            '<div style="font-size:11px; color:#6b7280; margin-top:6px; padding:0 4px; line-height:1.4;">'
+            'É a porcentagem de toda a energia gerada pela usina que é consumida instantaneamente no local.'
+            '</div>',
+            unsafe_allow_html=True
+        )
     with s2:
         st.markdown(
             summary_box_html(
@@ -1122,6 +1146,12 @@ if generation_file and load_file:
             ),
             unsafe_allow_html=True
         )
+        st.markdown(
+            '<div style="font-size:11px; color:#6b7280; margin-top:6px; padding:0 4px; line-height:1.4;">'
+            'É a porcentagem de todo o consumo de energia do local que é suprida diretamente pela usina solar.'
+            '</div>',
+            unsafe_allow_html=True
+        )
     with s3:
         st.markdown(
             summary_box_html(
@@ -1130,6 +1160,12 @@ if generation_file and load_file:
                 td_color, "summary-orange",
                 f"{td_icon} {td_label}"
             ),
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            '<div style="font-size:11px; color:#6b7280; margin-top:6px; padding:0 4px; line-height:1.4;">'
+            'É a porcentagem da energia que a usina era capaz de gerar, mas precisou ser descartada por falta de consumo.'
+            '</div>',
             unsafe_allow_html=True
         )
 
