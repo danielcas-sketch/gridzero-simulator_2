@@ -275,30 +275,30 @@ def kpi_card_html(title, value, color, sub="", sparkline_html="", description=""
     """
     desc_html = f'<div class="indicator-desc">{description}</div>' if description else ""
     sub_html = f'<div class="kpi-sub">{sub}</div>' if sub else ""
-    return f"""
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-title" style="color:{color}">{title}</div>
-            {desc_html}
-            <div class="kpi-value" style="color:{color}">{value}</div>
-            {sub_html}
-        </div>
-        <div class="kpi-spark">{sparkline_html}</div>
-    </div>
-    """
+    return (
+        f'<div class="kpi-card">'
+        f'<div>'
+        f'<div class="kpi-title" style="color:{color}">{title}</div>'
+        f'{desc_html}'
+        f'<div class="kpi-value" style="color:{color}">{value}</div>'
+        f'{sub_html}'
+        f'</div>'
+        f'<div class="kpi-spark">{sparkline_html}</div>'
+        f'</div>'
+    )
 
 
 def summary_box_html(title, value, color, cls, sub="", description=""):
     """Card de resumo com descrição opcional logo abaixo do título."""
     desc_html = f'<div class="indicator-desc">{description}</div>' if description else ""
-    return f"""
-    <div class="summary-box {cls}">
-        <div class="summary-title" style="color:{color}">{title}</div>
-        {desc_html}
-        <div class="summary-value" style="color:{color}">{value}</div>
-        <div class="summary-sub">{sub}</div>
-    </div>
-    """
+    return (
+        f'<div class="summary-box {cls}">'
+        f'<div class="summary-title" style="color:{color}">{title}</div>'
+        f'{desc_html}'
+        f'<div class="summary-value" style="color:{color}">{value}</div>'
+        f'<div class="summary-sub">{sub}</div>'
+        f'</div>'
+    )
 
 
 def format_filesize(num_bytes):
