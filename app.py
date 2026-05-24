@@ -175,6 +175,15 @@ button[kind="secondary"]:hover {
 .summary-value { font-size: 28px; font-weight: 700; margin-top: 8px; line-height: 1.1; }
 .summary-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
 
+/* Descrição explicativa que fica logo abaixo do título dos indicadores */
+.indicator-desc {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 4px;
+    line-height: 1.35;
+    font-weight: 400;
+}
+
 .file-card {
     background: white;
     border: 1px solid #e5e7eb;
@@ -260,13 +269,17 @@ def sparkline_svg(values, color, width=180, height=30):
     '''
 
 
-def kpi_card_html(title, value, color, sub="", sparkline_html=""):
-    """Card KPI com sub-texto opcional e sparkline."""
+def kpi_card_html(title, value, color, sub="", sparkline_html="", description=""):
+    """Card KPI com sub-texto opcional, descrição explicativa opcional (logo
+    abaixo do título) e sparkline.
+    """
+    desc_html = f'<div class="indicator-desc">{description}</div>' if description else ""
     sub_html = f'<div class="kpi-sub">{sub}</div>' if sub else ""
     return f"""
     <div class="kpi-card">
         <div>
             <div class="kpi-title" style="color:{color}">{title}</div>
+            {desc_html}
             <div class="kpi-value" style="color:{color}">{value}</div>
             {sub_html}
         </div>
@@ -275,10 +288,13 @@ def kpi_card_html(title, value, color, sub="", sparkline_html=""):
     """
 
 
-def summary_box_html(title, value, color, cls, sub=""):
+def summary_box_html(title, value, color, cls, sub="", description=""):
+    """Card de resumo com descrição opcional logo abaixo do título."""
+    desc_html = f'<div class="indicator-desc">{description}</div>' if description else ""
     return f"""
     <div class="summary-box {cls}">
         <div class="summary-title" style="color:{color}">{title}</div>
+        {desc_html}
         <div class="summary-value" style="color:{color}">{value}</div>
         <div class="summary-sub">{sub}</div>
     </div>
@@ -328,6 +344,21 @@ def classificar_taxa_desperdicio(pct):
         return ("#ca8a04", "🔶", "Moderado — Nível de corte dentro da normalidade para Grid Zero.")
     else:
         return ("#dc2626", "⚠️", "Crítico — Alta perda de energia, o que prejudica o retorno financeiro.")
+
+
+# Textos descritivos dos indicadores (compartilhados entre header e cards fixos)
+DESC_SIMULTANEIDADE = (
+    "É a porcentagem de toda a energia gerada pela usina "
+    "que é consumida instantaneamente no local."
+)
+DESC_FATOR_COBERTURA = (
+    "É a porcentagem de todo o consumo de energia do local "
+    "que é suprida diretamente pela usina solar."
+)
+DESC_TAXA_DESPERDICIO = (
+    "É a porcentagem da energia que a usina era capaz de gerar, "
+    "mas precisou ser descartada por falta de consumo."
+)
 
 
 @st.cache_data(show_spinner=False)
@@ -387,30 +418,6 @@ def carregar_e_processar(gen_bytes, load_bytes):
     return out
 
 
-@st.cache_data(show_spinner=False)
-def estatisticas_totais(df_hash_key):
-    """Estatísticas do CSV inteiro — usadas nos cards inferiores fixos.
-    Recebe um hash key pra invalidar cache quando os dados mudam,
-    e pega o df de session_state.
-    """
-    df = st.session_state.df_processado
-    df_real = df[~df["DataHora"].isin([])]  # placeholder, df inteiro
-
-    total_import = df_real[df_real["Energia_Light"] > 0]["Energia_Light"].sum()
-    energia_cortada = df_real["Geracao_Cortada"].sum()
-    max_corte = df_real["Geracao_Cortada"].max() if len(df_real) else 0
-    horas_corte = (df_real["Geracao_Cortada"] > 0).sum()
-    horas_originais = len(df_real[df_real["DataHora"].dt.minute == 0]) if "DataHora" in df_real.columns else len(df_real)
-
-    return {
-        "total_import": total_import,
-        "energia_cortada": energia_cortada,
-        "max_corte": max_corte,
-        "horas_corte": horas_corte,
-        "horas_originais": horas_originais,
-    }
-
-
 # =========================================================
 # SESSION STATE
 # =========================================================
@@ -420,7 +427,7 @@ if "index" not in st.session_state:
 if "run_simulation" not in st.session_state:
     st.session_state.run_simulation = False
 if "view_mode" not in st.session_state:
-    st.session_state.view_mode = "Intervalo"  # default: já mostra intervalo inteiro
+    st.session_state.view_mode = "Intervalo"
 if "intervalo_inicio" not in st.session_state:
     st.session_state.intervalo_inicio = None
 if "intervalo_fim" not in st.session_state:
@@ -439,7 +446,6 @@ def reset_replay():
 
 def set_mode_replay():
     st.session_state.view_mode = "Replay"
-    # Pausa por segurança ao entrar no modo
     st.session_state.run_simulation = False
 
 def set_mode_intervalo():
@@ -459,22 +465,14 @@ def aplicar_atalho_intervalo(dias, df):
 
 
 # =========================================================
-# SIDEBAR — só upload de arquivos
+# SIDEBAR
 # =========================================================
 
 with st.sidebar:
     st.markdown("## Arquivos")
 
-    generation_file = st.file_uploader(
-        "geracao.csv",
-        type=["csv"],
-        key="up_gen"
-    )
-    load_file = st.file_uploader(
-        "consumo.csv",
-        type=["csv"],
-        key="up_load"
-    )
+    generation_file = st.file_uploader("geracao.csv", type=["csv"], key="up_gen")
+    load_file = st.file_uploader("consumo.csv", type=["csv"], key="up_load")
 
     if generation_file is not None:
         st.markdown(
@@ -526,23 +524,19 @@ if generation_file and load_file:
         load_file.getvalue()
     )
 
-    # Guardar no session_state para acesso global
     st.session_state.df_processado = df
 
-    # Limites do dataset
     data_min = df["DataHora"].min().date()
     data_max = df["DataHora"].max().date()
 
-    # Inicializar intervalo no primeiro carregamento
     if st.session_state.intervalo_inicio is None:
         st.session_state.intervalo_inicio = data_min
     if st.session_state.intervalo_fim is None:
         st.session_state.intervalo_fim = data_max
 
     # =====================================================
-    # ESTATÍSTICAS GLOBAIS (CSV INTEIRO) — para cards fixos
+    # ESTATÍSTICAS GLOBAIS (CSV INTEIRO)
     # =====================================================
-    # Filtra apenas os pontos originais (sem os de cruzamento que têm minuto != 0)
     df_originais = df[df["DataHora"].dt.minute == 0].copy() if len(df) > 0 else df
 
     total_import_full = df_originais[df_originais["Energia_Light"] > 0]["Energia_Light"].sum()
@@ -554,46 +548,33 @@ if generation_file and load_file:
     horas_corte_full = (df_originais["Geracao_Cortada"] > 0).sum()
     total_horas_full = len(df_originais)
 
-    # Fator de Cobertura: quanto do consumo total foi suprido pela geração solar
     if energia_consumida_full > 0:
         fator_cobertura_full = (energia_aproveitada_full / energia_consumida_full) * 100
     else:
         fator_cobertura_full = 0
 
-    # Taxa de Desperdício: energia cortada / energia gerável (inverso da simultaneidade)
     if energia_geravel_full > 0:
         taxa_desperdicio_full = (energia_cortada_full / energia_geravel_full) * 100
-    else:
-        taxa_desperdicio_full = 0
-
-    # Índice de Simultaneidade: quanto da geração potencial foi efetivamente aproveitada.
-    # 100% = usina perfeitamente dimensionada (tudo que gerou foi consumido)
-    # < 60% = usina superdimensionada (muito curtailment, ociosidade alta)
-    if energia_geravel_full > 0:
         simultaneidade_full = (energia_aproveitada_full / energia_geravel_full) * 100
     else:
+        taxa_desperdicio_full = 0
         simultaneidade_full = 0
 
-    # =====================================================
-    # GARANTIR LIMITES DO ÍNDICE
-    # =====================================================
     if st.session_state.index >= len(df):
         st.session_state.index = len(df) - 1
     if st.session_state.index < 0:
         st.session_state.index = 0
 
     # =====================================================
-    # SELEÇÃO DO DATAFRAME E DADOS DOS KPIs CONFORME MODO
+    # MODO ATUAL E DADOS DOS KPIs
     # =====================================================
     modo = st.session_state.view_mode
 
     if modo == "Replay":
-        # Modo Replay: avança hora a hora
         current_index = st.session_state.index
         chart_df = df.iloc[: current_index + 1]
         current = df.iloc[current_index]
 
-        # KPIs do topo: valor instantâneo
         kpi_data = {
             "header_titulo": current["DataHora"].strftime("%d/%m/%Y %H:%M"),
             "header_sub": "Ponto atual do replay",
@@ -603,15 +584,12 @@ if generation_file and load_file:
             "light": (f"{fmt_int(current['Energia_Light'])} kW", "Instantâneo"),
             "status_ativo": current["Geracao_Cortada"] > 0,
         }
-        # Sparklines com os últimos 40 pontos
         spark_source = chart_df
     else:
-        # Modo Intervalo: filtra pelo período selecionado
         d_ini = pd.to_datetime(st.session_state.intervalo_inicio)
         d_fim = pd.to_datetime(st.session_state.intervalo_fim) + pd.Timedelta(days=1)
         chart_df = df[(df["DataHora"] >= d_ini) & (df["DataHora"] < d_fim)]
 
-        # Para estatísticas, usar só pontos originais dentro do intervalo
         intervalo_originais = chart_df[chart_df["DataHora"].dt.minute == 0]
 
         carga_total_kwh = intervalo_originais["Carga"].sum()
@@ -623,7 +601,6 @@ if generation_file and load_file:
         horas_ativo = (intervalo_originais["Geracao_Cortada"] > 0).sum()
         total_horas = len(intervalo_originais)
 
-        # Simultaneidade do intervalo
         if geravel_total_kwh > 0:
             simultaneidade_intervalo = (limitada_total_kwh / geravel_total_kwh) * 100
             taxa_desperdicio_intervalo = (cortada_total_kwh / geravel_total_kwh) * 100
@@ -656,14 +633,10 @@ if generation_file and load_file:
         spark_source = chart_df
 
     # =====================================================
-    # HEADER — Card de período + KPIs + Status
-    # =====================================================
-    # =====================================================
     # HEADER — Cards conforme modo
     # =====================================================
 
     if modo == "Replay":
-        # Modo Replay: uma única linha com 6 cards
         cols = st.columns([1.7, 1.3, 1.3, 1.3, 1.3, 1.3])
 
         with cols[0]:
@@ -723,9 +696,8 @@ if generation_file and load_file:
             )
 
     else:
-        # Modo Intervalo: duas linhas de cards com labels separadores
+        # Modo Intervalo: duas linhas
 
-        # ── Label do período ──
         st.markdown(
             f"""
             <div style="font-size:14px; font-weight:600; color:#374151; margin-bottom:4px;">
@@ -736,7 +708,7 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-        # ── Linha 1: Energia ──
+        # Linha 1: Energia
         st.markdown(
             '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:10px 0 6px 0;">'
             '⚡ Energia (kWh / MWh)</div>',
@@ -764,7 +736,7 @@ if generation_file and load_file:
                     unsafe_allow_html=True
                 )
 
-        # ── Linha 2: Indicadores ──
+        # Linha 2: Indicadores
         st.markdown(
             '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
             '📊 Indicadores de Desempenho</div>',
@@ -773,7 +745,7 @@ if generation_file and load_file:
 
         cols_linha2 = st.columns([1, 1, 1])
 
-        # Simultaneidade — Mede a eficiência do uso da usina
+        # Simultaneidade
         simul = kpi_data["simultaneidade"]
         if simul >= 80:
             sim_color, sim_icon, sim_text = "#16a34a", "✅", "Excelente — Máximo aproveitamento da capacidade de geração."
@@ -789,14 +761,9 @@ if generation_file and load_file:
                     f"{simul:.1f}%",
                     sim_color,
                     f"{sim_icon} {sim_text}",
-                    ""
+                    "",
+                    DESC_SIMULTANEIDADE
                 ),
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                '<div style="font-size:11px; color:#6b7280; margin-top:-8px; padding:0 4px; line-height:1.4;">'
-                'É a porcentagem de toda a energia gerada pela usina que é consumida instantaneamente no local.'
-                '</div>',
                 unsafe_allow_html=True
             )
 
@@ -810,14 +777,9 @@ if generation_file and load_file:
                     f"{fc:.1f}%",
                     fc_color,
                     f"{fc_icon} {fc_text}",
-                    ""
+                    "",
+                    DESC_FATOR_COBERTURA
                 ),
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                '<div style="font-size:11px; color:#6b7280; margin-top:-8px; padding:0 4px; line-height:1.4;">'
-                'É a porcentagem de todo o consumo de energia do local que é suprida diretamente pela usina solar.'
-                '</div>',
                 unsafe_allow_html=True
             )
 
@@ -831,14 +793,9 @@ if generation_file and load_file:
                     f"{td:.1f}%",
                     td_color,
                     f"{td_icon} {td_text}",
-                    ""
+                    "",
+                    DESC_TAXA_DESPERDICIO
                 ),
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                '<div style="font-size:11px; color:#6b7280; margin-top:-8px; padding:0 4px; line-height:1.4;">'
-                'É a porcentagem da energia que a usina era capaz de gerar, mas precisou ser descartada por falta de consumo.'
-                '</div>',
                 unsafe_allow_html=True
             )
 
@@ -851,7 +808,6 @@ if generation_file and load_file:
         unsafe_allow_html=True
     )
 
-    # Toggle de modo
     mode_col1, mode_col2, mode_spacer = st.columns([1.2, 1.5, 6])
     with mode_col1:
         st.button(
@@ -870,7 +826,6 @@ if generation_file and load_file:
             on_click=set_mode_intervalo
         )
 
-    # Controles específicos do modo
     if modo == "Replay":
         ctrl_cols = st.columns([1.2, 1.0, 2.0, 3.0])
         with ctrl_cols[0]:
@@ -906,7 +861,6 @@ if generation_file and load_file:
                 unsafe_allow_html=True
             )
     else:
-        # Modo Intervalo
         ctrl_cols = st.columns([1.5, 1.5, 0.8, 0.8, 0.8, 0.8])
         with ctrl_cols[0]:
             st.date_input(
@@ -932,36 +886,20 @@ if generation_file and load_file:
             )
         with ctrl_cols[2]:
             st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button(
-                "1 dia",
-                use_container_width=True,
-                key="btn_1d",
-                on_click=lambda: aplicar_atalho_intervalo(1, df)
-            )
+            st.button("1 dia", use_container_width=True, key="btn_1d",
+                      on_click=lambda: aplicar_atalho_intervalo(1, df))
         with ctrl_cols[3]:
             st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button(
-                "7 dias",
-                use_container_width=True,
-                key="btn_7d",
-                on_click=lambda: aplicar_atalho_intervalo(7, df)
-            )
+            st.button("7 dias", use_container_width=True, key="btn_7d",
+                      on_click=lambda: aplicar_atalho_intervalo(7, df))
         with ctrl_cols[4]:
             st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button(
-                "30 dias",
-                use_container_width=True,
-                key="btn_30d",
-                on_click=lambda: aplicar_atalho_intervalo(30, df)
-            )
+            st.button("30 dias", use_container_width=True, key="btn_30d",
+                      on_click=lambda: aplicar_atalho_intervalo(30, df))
         with ctrl_cols[5]:
             st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button(
-                "Tudo",
-                use_container_width=True,
-                key="btn_all",
-                on_click=lambda: aplicar_atalho_intervalo(None, df)
-            )
+            st.button("Tudo", use_container_width=True, key="btn_all",
+                      on_click=lambda: aplicar_atalho_intervalo(None, df))
 
     # =====================================================
     # GRÁFICO
@@ -1056,7 +994,7 @@ if generation_file and load_file:
         unsafe_allow_html=True
     )
 
-    # ── Linha 1: Valores de energia ──
+    # Linha 1: Valores de energia
     st.markdown(
         '<div style="font-size:13px; font-weight:600; color:#6b7280; margin-bottom:6px;">'
         '⚡ Energia (kWh / MWh)</div>',
@@ -1095,28 +1033,30 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-    # ── Linha 2: Indicadores percentuais ──
+    # Linha 2: Indicadores percentuais
     st.markdown(
         '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
         '📊 Indicadores de Desempenho</div>',
         unsafe_allow_html=True
     )
 
-    # Classificações qualitativas
     fc_color, fc_icon, fc_label = classificar_fator_cobertura(fator_cobertura_full)
     td_color, td_icon, td_label = classificar_taxa_desperdicio(taxa_desperdicio_full)
 
     if simultaneidade_full >= 80:
         simul_class = "summary-green"
         simul_color = "#16a34a"
+        simul_icon = "✅"
         simul_label = "Excelente — Máximo aproveitamento da capacidade de geração."
     elif simultaneidade_full >= 60:
         simul_class = "summary-yellow"
         simul_color = "#ca8a04"
+        simul_icon = "🔶"
         simul_label = "Adequado — Bom equilíbrio de uso da usina durante o dia."
     else:
         simul_class = "summary-red"
         simul_color = "#dc2626"
+        simul_icon = "⚠️"
         simul_label = "Superdimensionado — Boa parte da capacidade do inversor está ociosa."
 
     s1, s2, s3 = st.columns(3)
@@ -1126,14 +1066,9 @@ if generation_file and load_file:
                 "Simultaneidade",
                 f"{simultaneidade_full:.1f}%",
                 simul_color, simul_class,
-                f"🛡️ {simul_label}"
+                f"{simul_icon} {simul_label}",
+                DESC_SIMULTANEIDADE
             ),
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            '<div style="font-size:11px; color:#6b7280; margin-top:6px; padding:0 4px; line-height:1.4;">'
-            'É a porcentagem de toda a energia gerada pela usina que é consumida instantaneamente no local.'
-            '</div>',
             unsafe_allow_html=True
         )
     with s2:
@@ -1142,14 +1077,9 @@ if generation_file and load_file:
                 "Fator de Cobertura",
                 f"{fator_cobertura_full:.1f}%",
                 fc_color, "summary-green",
-                f"{fc_icon} {fc_label}"
+                f"{fc_icon} {fc_label}",
+                DESC_FATOR_COBERTURA
             ),
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            '<div style="font-size:11px; color:#6b7280; margin-top:6px; padding:0 4px; line-height:1.4;">'
-            'É a porcentagem de todo o consumo de energia do local que é suprida diretamente pela usina solar.'
-            '</div>',
             unsafe_allow_html=True
         )
     with s3:
@@ -1158,14 +1088,9 @@ if generation_file and load_file:
                 "Taxa de Desperdício",
                 f"{taxa_desperdicio_full:.1f}%",
                 td_color, "summary-orange",
-                f"{td_icon} {td_label}"
+                f"{td_icon} {td_label}",
+                DESC_TAXA_DESPERDICIO
             ),
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            '<div style="font-size:11px; color:#6b7280; margin-top:6px; padding:0 4px; line-height:1.4;">'
-            'É a porcentagem da energia que a usina era capaz de gerar, mas precisou ser descartada por falta de consumo.'
-            '</div>',
             unsafe_allow_html=True
         )
 
@@ -1180,7 +1105,6 @@ if generation_file and load_file:
         unsafe_allow_html=True
     )
 
-    # Usa apenas pontos originais (minutos zerados, sem cruzamentos artificiais)
     tabela_src = chart_df[chart_df["DataHora"].dt.minute == 0].copy()
     tabela_src["Status"] = tabela_src["Geracao_Cortada"].apply(
         lambda x: "GridZero Ativo" if x > 0 else "Importando"
