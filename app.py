@@ -184,6 +184,41 @@ button[kind="secondary"]:hover {
     font-weight: 400;
 }
 
+/* Abas de navegação principal (Análise Operacional vs Financeira) */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 6px;
+    background: white;
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    margin-bottom: 18px;
+}
+.stTabs [data-baseweb="tab"] {
+    height: 44px;
+    padding: 0 22px;
+    border-radius: 8px;
+    background-color: transparent;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    transition: all 0.15s ease;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background-color: #2563eb;
+    color: white;
+}
+.stTabs [data-baseweb="tab-highlight"] {
+    display: none;
+}
+.stTabs [data-baseweb="tab-border"] {
+    display: none;
+}
+
 /* Cards financeiros (Payback, TIR, VPL) */
 .fin-card {
     background: white;
@@ -946,900 +981,910 @@ if generation_file and load_file:
         spark_source = chart_df
 
     # =====================================================
-    # HEADER — Cards conforme modo
+    # NAVEGAÇÃO EM ABAS
     # =====================================================
+    tab_operacional, tab_financeira = st.tabs([
+        "📊  Análise Operacional",
+        "💰  Análise Financeira"
+    ])
 
-    if modo == "Replay":
-        cols = st.columns([1.7, 1.3, 1.3, 1.3, 1.3, 1.3])
+    with tab_operacional:
+        # =====================================================
+        # HEADER — Cards conforme modo
+        # =====================================================
 
-        with cols[0]:
-            st.markdown(
-                f"""
-                <div class="replay-card">
-                    <div class="replay-clock">🕒</div>
-                    <div class="replay-time">{kpi_data['header_titulo']}</div>
-                    <div class="replay-sub">{kpi_data['header_sub']}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        if modo == "Replay":
+            cols = st.columns([1.7, 1.3, 1.3, 1.3, 1.3, 1.3])
 
-        def spark_data(col, n=40):
-            return spark_source[col].tail(n).tolist()
-
-        cards_config = [
-            ("Carga", "carga", "#2563eb", "Carga"),
-            ("Energia Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
-            ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
-            ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
-        ]
-
-        for i, (titulo, key, cor, col_dados) in enumerate(cards_config):
-            with cols[i + 1]:
-                spark = sparkline_svg(spark_data(col_dados), cor)
-                valor, sub = kpi_data[key]
+            with cols[0]:
                 st.markdown(
-                    kpi_card_html(titulo, valor, cor, sub, spark),
+                    f"""
+                    <div class="replay-card">
+                        <div class="replay-clock">🕒</div>
+                        <div class="replay-time">{kpi_data['header_titulo']}</div>
+                        <div class="replay-sub">{kpi_data['header_sub']}</div>
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
 
-        with cols[5]:
-            if kpi_data["status_ativo"]:
-                status_text, status_sub, status_color, status_icon = (
-                    "GridZero Ativo", "Sem exportação", "#16a34a", "🛡️"
+            def spark_data(col, n=40):
+                return spark_source[col].tail(n).tolist()
+
+            cards_config = [
+                ("Carga", "carga", "#2563eb", "Carga"),
+                ("Energia Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
+                ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
+                ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
+            ]
+
+            for i, (titulo, key, cor, col_dados) in enumerate(cards_config):
+                with cols[i + 1]:
+                    spark = sparkline_svg(spark_data(col_dados), cor)
+                    valor, sub = kpi_data[key]
+                    st.markdown(
+                        kpi_card_html(titulo, valor, cor, sub, spark),
+                        unsafe_allow_html=True
+                    )
+
+            with cols[5]:
+                if kpi_data["status_ativo"]:
+                    status_text, status_sub, status_color, status_icon = (
+                        "GridZero Ativo", "Sem exportação", "#16a34a", "🛡️"
+                    )
+                else:
+                    status_text, status_sub, status_color, status_icon = (
+                        "Normal", "Sem limitação", "#64748b", "✓"
+                    )
+                status_label = "Status"
+
+                st.markdown(
+                    f"""
+                    <div class="status-card">
+                        <div class="status-label">{status_label}</div>
+                        <div class="status-main">
+                            <div class="status-icon">{status_icon}</div>
+                            <div class="status-text" style="color:{status_color}">{status_text}</div>
+                        </div>
+                        <div class="status-sub">{status_sub}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
                 )
-            else:
-                status_text, status_sub, status_color, status_icon = (
-                    "Normal", "Sem limitação", "#64748b", "✓"
-                )
-            status_label = "Status"
+
+        else:
+            # Modo Intervalo: duas linhas
 
             st.markdown(
                 f"""
-                <div class="status-card">
-                    <div class="status-label">{status_label}</div>
-                    <div class="status-main">
-                        <div class="status-icon">{status_icon}</div>
-                        <div class="status-text" style="color:{status_color}">{status_text}</div>
-                    </div>
-                    <div class="status-sub">{status_sub}</div>
+                <div style="font-size:14px; font-weight:600; color:#374151; margin-bottom:4px;">
+                    🕒 Período selecionado: <span style="color:#2563eb;">{kpi_data['header_titulo']}</span>
+                    <span style="font-size:12px; color:#6b7280; font-weight:400;"> — {kpi_data['header_sub']}</span>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-    else:
-        # Modo Intervalo: duas linhas
+            # Linha 1: Energia
+            st.markdown(
+                '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:10px 0 6px 0;">'
+                '⚡ Energia (kWh / MWh)</div>',
+                unsafe_allow_html=True
+            )
+
+            cols_linha1 = st.columns([1, 1, 1, 1])
+
+            def spark_data(col, n=40):
+                return spark_source[col].tail(n).tolist()
+
+            cards_config_linha1 = [
+                ("Carga", "carga", "#2563eb", "Carga"),
+                ("Energia Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
+                ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
+                ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
+            ]
+
+            for i, (titulo, key, cor, col_dados) in enumerate(cards_config_linha1):
+                with cols_linha1[i]:
+                    spark = sparkline_svg(spark_data(col_dados), cor)
+                    valor, sub = kpi_data[key]
+                    st.markdown(
+                        kpi_card_html(titulo, valor, cor, sub, spark),
+                        unsafe_allow_html=True
+                    )
+
+            # Linha 2: Indicadores
+            st.markdown(
+                '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
+                '📊 Indicadores de Desempenho</div>',
+                unsafe_allow_html=True
+            )
+
+            cols_linha2 = st.columns([1, 1, 1])
+
+            # Simultaneidade
+            simul = kpi_data["simultaneidade"]
+            if simul >= 80:
+                sim_color, sim_icon, sim_text = "#16a34a", "✅", "Excelente — Máximo aproveitamento da capacidade de geração."
+            elif simul >= 60:
+                sim_color, sim_icon, sim_text = "#ca8a04", "🔶", "Adequado — Bom equilíbrio de uso da usina durante o dia."
+            else:
+                sim_color, sim_icon, sim_text = "#dc2626", "⚠️", "Superdimensionado — Boa parte da capacidade do inversor está ociosa."
+
+            with cols_linha2[0]:
+                st.markdown(
+                    kpi_card_html(
+                        "Simultaneidade",
+                        f"{simul:.1f}%",
+                        sim_color,
+                        f"{sim_icon} {sim_text}",
+                        "",
+                        DESC_SIMULTANEIDADE
+                    ),
+                    unsafe_allow_html=True
+                )
+
+            # Fator de Cobertura
+            fc = kpi_data["fator_cobertura"]
+            fc_color, fc_icon, fc_text = classificar_fator_cobertura(fc)
+            with cols_linha2[1]:
+                st.markdown(
+                    kpi_card_html(
+                        "Fator de Cobertura",
+                        f"{fc:.1f}%",
+                        fc_color,
+                        f"{fc_icon} {fc_text}",
+                        "",
+                        DESC_FATOR_COBERTURA
+                    ),
+                    unsafe_allow_html=True
+                )
+
+            # Taxa de Desperdício
+            td = kpi_data["taxa_desperdicio"]
+            td_color, td_icon, td_text = classificar_taxa_desperdicio(td)
+            with cols_linha2[2]:
+                st.markdown(
+                    kpi_card_html(
+                        "Taxa de Desperdício",
+                        f"{td:.1f}%",
+                        td_color,
+                        f"{td_icon} {td_text}",
+                        "",
+                        DESC_TAXA_DESPERDICIO
+                    ),
+                    unsafe_allow_html=True
+                )
+
+        # =====================================================
+        # SEÇÃO DO GRÁFICO — Toggle de modo + Controles
+        # =====================================================
 
         st.markdown(
-            f"""
-            <div style="font-size:14px; font-weight:600; color:#374151; margin-bottom:4px;">
-                🕒 Período selecionado: <span style="color:#2563eb;">{kpi_data['header_titulo']}</span>
-                <span style="font-size:12px; color:#6b7280; font-weight:400;"> — {kpi_data['header_sub']}</span>
-            </div>
-            """,
+            '<div class="section-title">📈 Fluxo de Potência</div>',
             unsafe_allow_html=True
         )
 
-        # Linha 1: Energia
+        mode_col1, mode_col2, mode_spacer = st.columns([1.2, 1.5, 6])
+        with mode_col1:
+            st.button(
+                "▶ Replay ao vivo",
+                type="primary" if modo == "Replay" else "secondary",
+                use_container_width=True,
+                key="btn_mode_replay",
+                on_click=set_mode_replay
+            )
+        with mode_col2:
+            st.button(
+                "📅 Visualizar intervalo",
+                type="primary" if modo == "Intervalo" else "secondary",
+                use_container_width=True,
+                key="btn_mode_intervalo",
+                on_click=set_mode_intervalo
+            )
+
+        if modo == "Replay":
+            ctrl_cols = st.columns([1.2, 1.0, 2.0, 3.0])
+            with ctrl_cols[0]:
+                label = "⏸ Pausar" if st.session_state.run_simulation else "▶ Rodar"
+                st.button(
+                    label,
+                    type="primary",
+                    use_container_width=True,
+                    key="btn_toggle_play",
+                    on_click=toggle_play
+                )
+            with ctrl_cols[1]:
+                st.button(
+                    "↻ Reiniciar",
+                    type="secondary",
+                    use_container_width=True,
+                    key="btn_reset_replay",
+                    on_click=reset_replay
+                )
+            with ctrl_cols[2]:
+                speed = st.slider(
+                    "Velocidade (s/passo)",
+                    0.05, 2.0, 0.3, 0.05,
+                    key="slider_speed"
+                )
+            with ctrl_cols[3]:
+                progresso = (st.session_state.index + 1) / len(df) * 100
+                st.markdown(
+                    f"<div style='padding-top:10px; color:#6b7280; font-size:13px;'>"
+                    f"Progresso: <b style='color:#1f2937'>{st.session_state.index + 1}</b>"
+                    f" / {len(df)} pontos ({progresso:.1f}%)"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+        else:
+            ctrl_cols = st.columns([1.5, 1.5, 0.8, 0.8, 0.8, 0.8])
+            with ctrl_cols[0]:
+                st.date_input(
+                    "Início",
+                    value=st.session_state.intervalo_inicio,
+                    min_value=data_min,
+                    max_value=data_max,
+                    key="dt_intervalo_inicio_widget",
+                    on_change=lambda: st.session_state.update(
+                        intervalo_inicio=st.session_state.dt_intervalo_inicio_widget
+                    )
+                )
+            with ctrl_cols[1]:
+                st.date_input(
+                    "Fim",
+                    value=st.session_state.intervalo_fim,
+                    min_value=data_min,
+                    max_value=data_max,
+                    key="dt_intervalo_fim_widget",
+                    on_change=lambda: st.session_state.update(
+                        intervalo_fim=st.session_state.dt_intervalo_fim_widget
+                    )
+                )
+            with ctrl_cols[2]:
+                st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
+                st.button("1 dia", use_container_width=True, key="btn_1d",
+                          on_click=lambda: aplicar_atalho_intervalo(1, df))
+            with ctrl_cols[3]:
+                st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
+                st.button("7 dias", use_container_width=True, key="btn_7d",
+                          on_click=lambda: aplicar_atalho_intervalo(7, df))
+            with ctrl_cols[4]:
+                st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
+                st.button("30 dias", use_container_width=True, key="btn_30d",
+                          on_click=lambda: aplicar_atalho_intervalo(30, df))
+            with ctrl_cols[5]:
+                st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
+                st.button("Tudo", use_container_width=True, key="btn_all",
+                          on_click=lambda: aplicar_atalho_intervalo(None, df))
+
+        # =====================================================
+        # GRÁFICO
+        # =====================================================
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=chart_df["DataHora"], y=chart_df["Carga"],
+            name="Carga (Consumo)",
+            mode="lines",
+            line=dict(color="#2563eb", width=2.5, shape="spline", smoothing=1.2)
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=chart_df["DataHora"], y=chart_df["Geracao_Cortada_Visual"],
+            name="Geração Cortada",
+            mode="lines",
+            line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2),
+            fill="tonexty",
+            fillcolor="rgba(249, 115, 22, 0.20)",
+            connectgaps=False
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=chart_df["DataHora"], y=chart_df["Geracao_Limitada"],
+            name="Energia Aproveitada",
+            mode="lines",
+            line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=chart_df["DataHora"], y=chart_df["Energia_Light_Visual"],
+            name="Energia da Rede",
+            mode="lines",
+            line=dict(color="#9333ea", width=2.5, shape="spline", smoothing=1.2)
+        ))
+
+        fig.add_hline(y=0, line_width=2.5, line_color="black")
+
+        fig.update_layout(
+            height=520,
+            template="plotly_white",
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            hovermode="x unified",
+            font=dict(family="Arial, sans-serif", size=12, color="#1f2937"),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", y=1.02,
+                xanchor="center", x=0.5,
+                bgcolor="rgba(255,255,255,0)",
+                font=dict(size=12, color="#1f2937")
+            ),
+            margin=dict(l=10, r=10, t=60, b=10),
+            xaxis=dict(
+                title="",
+                gridcolor="#cbd5e1",
+                showgrid=True,
+                tickfont=dict(color="#374151", size=11),
+                linecolor="#9ca3af",
+                rangeslider=dict(
+                    visible=True,
+                    thickness=0.08,
+                    bgcolor="#f8fafc",
+                    bordercolor="#9ca3af",
+                    borderwidth=1
+                )
+            ),
+            yaxis=dict(
+                title=dict(
+                    text="Potência (kW)",
+                    font=dict(color="#1f2937", size=13)
+                ),
+                gridcolor="#cbd5e1",
+                tickfont=dict(color="#374151", size=11),
+                linecolor="#9ca3af",
+                zeroline=False
+            )
+        )
+
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+        # =====================================================
+        # CARDS DE RESUMO TOTAL — sempre do CSV inteiro
+        # =====================================================
+
         st.markdown(
-            '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:10px 0 6px 0;">'
+            '<div class="section-title">📊 Resultado da Simulação '
+            '<span style="font-size:13px; font-weight:400; color:#6b7280;">'
+            '(total do período carregado)</span></div>',
+            unsafe_allow_html=True
+        )
+
+        # Linha 1: Valores de energia
+        st.markdown(
+            '<div style="font-size:13px; font-weight:600; color:#6b7280; margin-bottom:6px;">'
             '⚡ Energia (kWh / MWh)</div>',
             unsafe_allow_html=True
         )
 
-        cols_linha1 = st.columns([1, 1, 1, 1])
+        r1, r2, r3 = st.columns(3)
+        with r1:
+            st.markdown(
+                summary_box_html(
+                    "Energia Importada (Light)",
+                    fmt_energia(total_import_full),
+                    "#2563eb", "summary-blue",
+                    "Total de energia consumida da concessionária"
+                ),
+                unsafe_allow_html=True
+            )
+        with r2:
+            st.markdown(
+                summary_box_html(
+                    "Energia Aproveitada",
+                    fmt_energia(energia_aproveitada_full),
+                    "#16a34a", "summary-green",
+                    "Energia fornecida pela UFV efetivamente consumida"
+                ),
+                unsafe_allow_html=True
+            )
+        with r3:
+            st.markdown(
+                summary_box_html(
+                    "Energia Cortada",
+                    fmt_energia(energia_cortada_full),
+                    "#dc2626", "summary-red",
+                    "Energia desperdiçada pelo GridZero"
+                ),
+                unsafe_allow_html=True
+            )
 
-        def spark_data(col, n=40):
-            return spark_source[col].tail(n).tolist()
-
-        cards_config_linha1 = [
-            ("Carga", "carga", "#2563eb", "Carga"),
-            ("Energia Aproveitada", "limitada", "#16a34a", "Geracao_Limitada"),
-            ("Geração Cortada", "cortada", "#f97316", "Geracao_Cortada"),
-            ("Energia da Rede", "light", "#9333ea", "Energia_Light"),
-        ]
-
-        for i, (titulo, key, cor, col_dados) in enumerate(cards_config_linha1):
-            with cols_linha1[i]:
-                spark = sparkline_svg(spark_data(col_dados), cor)
-                valor, sub = kpi_data[key]
-                st.markdown(
-                    kpi_card_html(titulo, valor, cor, sub, spark),
-                    unsafe_allow_html=True
-                )
-
-        # Linha 2: Indicadores
+        # Linha 2: Indicadores percentuais
         st.markdown(
             '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
             '📊 Indicadores de Desempenho</div>',
             unsafe_allow_html=True
         )
 
-        cols_linha2 = st.columns([1, 1, 1])
+        fc_color, fc_icon, fc_label = classificar_fator_cobertura(fator_cobertura_full)
+        td_color, td_icon, td_label = classificar_taxa_desperdicio(taxa_desperdicio_full)
 
-        # Simultaneidade
-        simul = kpi_data["simultaneidade"]
-        if simul >= 80:
-            sim_color, sim_icon, sim_text = "#16a34a", "✅", "Excelente — Máximo aproveitamento da capacidade de geração."
-        elif simul >= 60:
-            sim_color, sim_icon, sim_text = "#ca8a04", "🔶", "Adequado — Bom equilíbrio de uso da usina durante o dia."
+        if simultaneidade_full >= 80:
+            simul_class = "summary-green"
+            simul_color = "#16a34a"
+            simul_icon = "✅"
+            simul_label = "Excelente — Máximo aproveitamento da capacidade de geração."
+        elif simultaneidade_full >= 60:
+            simul_class = "summary-yellow"
+            simul_color = "#ca8a04"
+            simul_icon = "🔶"
+            simul_label = "Adequado — Bom equilíbrio de uso da usina durante o dia."
         else:
-            sim_color, sim_icon, sim_text = "#dc2626", "⚠️", "Superdimensionado — Boa parte da capacidade do inversor está ociosa."
+            simul_class = "summary-red"
+            simul_color = "#dc2626"
+            simul_icon = "⚠️"
+            simul_label = "Superdimensionado — Boa parte da capacidade do inversor está ociosa."
 
-        with cols_linha2[0]:
+        s1, s2, s3 = st.columns(3)
+        with s1:
             st.markdown(
-                kpi_card_html(
+                summary_box_html(
                     "Simultaneidade",
-                    f"{simul:.1f}%",
-                    sim_color,
-                    f"{sim_icon} {sim_text}",
-                    "",
+                    f"{simultaneidade_full:.1f}%",
+                    simul_color, simul_class,
+                    f"{simul_icon} {simul_label}",
                     DESC_SIMULTANEIDADE
                 ),
                 unsafe_allow_html=True
             )
-
-        # Fator de Cobertura
-        fc = kpi_data["fator_cobertura"]
-        fc_color, fc_icon, fc_text = classificar_fator_cobertura(fc)
-        with cols_linha2[1]:
+        with s2:
             st.markdown(
-                kpi_card_html(
+                summary_box_html(
                     "Fator de Cobertura",
-                    f"{fc:.1f}%",
-                    fc_color,
-                    f"{fc_icon} {fc_text}",
-                    "",
+                    f"{fator_cobertura_full:.1f}%",
+                    fc_color, "summary-green",
+                    f"{fc_icon} {fc_label}",
                     DESC_FATOR_COBERTURA
                 ),
                 unsafe_allow_html=True
             )
-
-        # Taxa de Desperdício
-        td = kpi_data["taxa_desperdicio"]
-        td_color, td_icon, td_text = classificar_taxa_desperdicio(td)
-        with cols_linha2[2]:
+        with s3:
             st.markdown(
-                kpi_card_html(
+                summary_box_html(
                     "Taxa de Desperdício",
-                    f"{td:.1f}%",
-                    td_color,
-                    f"{td_icon} {td_text}",
-                    "",
+                    f"{taxa_desperdicio_full:.1f}%",
+                    td_color, "summary-orange",
+                    f"{td_icon} {td_label}",
                     DESC_TAXA_DESPERDICIO
                 ),
                 unsafe_allow_html=True
             )
 
-    # =====================================================
-    # SEÇÃO DO GRÁFICO — Toggle de modo + Controles
-    # =====================================================
+        # =====================================================
+        # TABELA
+        # =====================================================
 
-    st.markdown(
-        '<div class="section-title">📈 Fluxo de Potência</div>',
-        unsafe_allow_html=True
-    )
-
-    mode_col1, mode_col2, mode_spacer = st.columns([1.2, 1.5, 6])
-    with mode_col1:
-        st.button(
-            "▶ Replay ao vivo",
-            type="primary" if modo == "Replay" else "secondary",
-            use_container_width=True,
-            key="btn_mode_replay",
-            on_click=set_mode_replay
-        )
-    with mode_col2:
-        st.button(
-            "📅 Visualizar intervalo",
-            type="primary" if modo == "Intervalo" else "secondary",
-            use_container_width=True,
-            key="btn_mode_intervalo",
-            on_click=set_mode_intervalo
+        st.markdown(
+            '<div class="section-title">📋 Dados Operacionais '
+            '<span style="font-size:13px; font-weight:400; color:#6b7280;">'
+            '(últimos registros do que está sendo exibido)</span></div>',
+            unsafe_allow_html=True
         )
 
-    if modo == "Replay":
-        ctrl_cols = st.columns([1.2, 1.0, 2.0, 3.0])
-        with ctrl_cols[0]:
-            label = "⏸ Pausar" if st.session_state.run_simulation else "▶ Rodar"
-            st.button(
-                label,
-                type="primary",
-                use_container_width=True,
-                key="btn_toggle_play",
-                on_click=toggle_play
-            )
-        with ctrl_cols[1]:
-            st.button(
-                "↻ Reiniciar",
-                type="secondary",
-                use_container_width=True,
-                key="btn_reset_replay",
-                on_click=reset_replay
-            )
-        with ctrl_cols[2]:
-            speed = st.slider(
-                "Velocidade (s/passo)",
-                0.05, 2.0, 0.3, 0.05,
-                key="slider_speed"
-            )
-        with ctrl_cols[3]:
-            progresso = (st.session_state.index + 1) / len(df) * 100
+        tabela_src = chart_df[chart_df["DataHora"].dt.minute == 0].copy()
+        tabela_src["Status"] = tabela_src["Geracao_Cortada"].apply(
+            lambda x: "GridZero Ativo" if x > 0 else "Importando"
+        )
+        tabela_src = tabela_src[[
+            "DataHora", "Carga", "Geracao_Limitada",
+            "Geracao_Cortada", "Energia_Light", "Status"
+        ]].rename(columns={
+            "Carga": "Carga (kW)",
+            "Geracao_Limitada": "Energia Aproveitada (kW)",
+            "Geracao_Cortada": "Geração Cortada (kW)",
+            "Energia_Light": "Energia da Rede (kW)"
+        })
+
+        st.dataframe(
+            tabela_src.tail(20).iloc[::-1],
+            use_container_width=True,
+            height=320,
+            hide_index=True
+        )
+
+    with tab_financeira:
+        # =====================================================
+        # 💰 ANÁLISE FINANCEIRA (GridZero)
+        # =====================================================
+
+        st.markdown(
+            '<div class="section-title">💰 Análise Financeira '
+            '<span style="font-size:13px; font-weight:400; color:#6b7280;">'
+            '(viabilidade econômica do projeto em modalidade GridZero)</span></div>',
+            unsafe_allow_html=True
+        )
+
+        # --- Dimensionar geração anual (estima ano cheio a partir do CSV) ---
+        # Pega só pontos originais e calcula soma anualizada
+        horas_no_csv = total_horas_full
+        if horas_no_csv > 0:
+            # Energia anual GridZero = total aproveitado projetado para 1 ano
+            geracao_anual_default = energia_aproveitada_full * (8760 / horas_no_csv)
+        else:
+            geracao_anual_default = 2_525_864  # fallback MELI
+
+        # --- Painel de premissas (expansível) ---
+        with st.expander("⚙️ Premissas do Projeto (clique para ajustar)", expanded=False):
             st.markdown(
-                f"<div style='padding-top:10px; color:#6b7280; font-size:13px;'>"
-                f"Progresso: <b style='color:#1f2937'>{st.session_state.index + 1}</b>"
-                f" / {len(df)} pontos ({progresso:.1f}%)"
-                f"</div>",
+                '<div style="font-size:12px; color:#6b7280; margin-bottom:10px;">'
+                'Valores baseados no projeto MELI/Prologis Dutra II. Ajuste conforme necessário.'
+                '</div>',
                 unsafe_allow_html=True
             )
-    else:
-        ctrl_cols = st.columns([1.5, 1.5, 0.8, 0.8, 0.8, 0.8])
-        with ctrl_cols[0]:
-            st.date_input(
-                "Início",
-                value=st.session_state.intervalo_inicio,
-                min_value=data_min,
-                max_value=data_max,
-                key="dt_intervalo_inicio_widget",
-                on_change=lambda: st.session_state.update(
-                    intervalo_inicio=st.session_state.dt_intervalo_inicio_widget
+
+            # SISTEMA
+            st.markdown("**🔧 Sistema**")
+            sys_col1, sys_col2, sys_col3, sys_col4 = st.columns(4)
+            with sys_col1:
+                capacidade_kwp = st.number_input(
+                    "Potência (kWp)",
+                    min_value=0.0, value=6315.84, step=10.0, format="%.2f",
+                    key="prem_kwp"
                 )
-            )
-        with ctrl_cols[1]:
-            st.date_input(
-                "Fim",
-                value=st.session_state.intervalo_fim,
-                min_value=data_min,
-                max_value=data_max,
-                key="dt_intervalo_fim_widget",
-                on_change=lambda: st.session_state.update(
-                    intervalo_fim=st.session_state.dt_intervalo_fim_widget
+            with sys_col2:
+                custo_kwp = st.number_input(
+                    "Custo (R$/kWp)",
+                    min_value=0.0, value=4400.0, step=100.0, format="%.2f",
+                    key="prem_custo_kwp"
                 )
+            with sys_col3:
+                vida_util = st.number_input(
+                    "Vida útil (anos)",
+                    min_value=10, max_value=40, value=30, step=1,
+                    key="prem_vida"
+                )
+            with sys_col4:
+                degradacao = st.number_input(
+                    "Degradação (% a.a.)",
+                    min_value=0.0, max_value=2.0, value=0.35, step=0.05, format="%.2f",
+                    key="prem_degradacao"
+                ) / 100
+
+            capex_total = capacidade_kwp * custo_kwp
+            st.markdown(
+                f'<div style="font-size:13px; color:#374151; margin-top:-4px;">'
+                f'💵 <b>CAPEX total</b>: {fmt_energia(capex_total).replace(" kWh","").replace(" MWh","")} '
+                f'(R$ {capex_total:,.0f})</div>'.replace(",", "."),
+                unsafe_allow_html=True
             )
-        with ctrl_cols[2]:
-            st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button("1 dia", use_container_width=True, key="btn_1d",
-                      on_click=lambda: aplicar_atalho_intervalo(1, df))
-        with ctrl_cols[3]:
-            st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button("7 dias", use_container_width=True, key="btn_7d",
-                      on_click=lambda: aplicar_atalho_intervalo(7, df))
-        with ctrl_cols[4]:
-            st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button("30 dias", use_container_width=True, key="btn_30d",
-                      on_click=lambda: aplicar_atalho_intervalo(30, df))
-        with ctrl_cols[5]:
-            st.markdown("<div style='padding-top:28px;'></div>", unsafe_allow_html=True)
-            st.button("Tudo", use_container_width=True, key="btn_all",
-                      on_click=lambda: aplicar_atalho_intervalo(None, df))
 
-    # =====================================================
-    # GRÁFICO
-    # =====================================================
+            # GERAÇÃO E TARIFA
+            st.markdown("**⚡ Geração e Tarifa**")
+            ger_col1, ger_col2, ger_col3 = st.columns(3)
+            with ger_col1:
+                geracao_anual_kwh = st.number_input(
+                    "Geração anual líquida (kWh)",
+                    min_value=0.0, value=float(geracao_anual_default), step=1000.0, format="%.0f",
+                    help="Estimativa anual a partir do CSV (energia aproveitada projetada para 8.760 h).",
+                    key="prem_ger_anual"
+                )
+            with ger_col2:
+                preco_energia = st.number_input(
+                    "Preço energia (R$/kWh)",
+                    min_value=0.0, value=0.5317, step=0.01, format="%.4f",
+                    key="prem_preco"
+                )
+            with ger_col3:
+                ajuste_preco = st.number_input(
+                    "Ajuste tarifa (% a.a.)",
+                    min_value=0.0, max_value=20.0, value=8.0, step=0.5, format="%.2f",
+                    key="prem_ajuste"
+                ) / 100
 
-    fig = go.Figure()
+            # DESPESAS OPERACIONAIS
+            st.markdown("**🏗️ Despesas Operacionais (anuais)**")
+            des_col1, des_col2, des_col3, des_col4 = st.columns(4)
+            with des_col1:
+                custo_om_por_kwp = st.number_input(
+                    "O&M (R$/kWp/ano)",
+                    min_value=0.0, value=60.0, step=5.0, format="%.2f",
+                    key="prem_om"
+                )
+            with des_col2:
+                custo_arr_por_kwp = st.number_input(
+                    "Arrendamento (R$/kWp/ano)",
+                    min_value=0.0, value=22.0, step=1.0, format="%.2f",
+                    key="prem_arr"
+                )
+            with des_col3:
+                custo_ga_por_kwp = st.number_input(
+                    "Rateio G&A (R$/kWp/ano)",
+                    min_value=0.0, value=11.0, step=1.0, format="%.2f",
+                    key="prem_ga"
+                )
+            with des_col4:
+                seguro_pct = st.number_input(
+                    "Seguro (% CAPEX/ano)",
+                    min_value=0.0, max_value=5.0, value=0.30, step=0.05, format="%.2f",
+                    key="prem_seguro"
+                ) / 100
 
-    fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Carga"],
-        name="Carga (Consumo)",
-        mode="lines",
-        line=dict(color="#2563eb", width=2.5, shape="spline", smoothing=1.2)
-    ))
+            dem_col1, dem_col2, dem_col3 = st.columns(3)
+            with dem_col1:
+                demanda_extra_anual = st.number_input(
+                    "Demanda adicional (R$/ano)",
+                    min_value=0.0, value=353106.0, step=1000.0, format="%.0f",
+                    help="Custo adicional de demanda contratada quando a usina exige mais demanda do que o cliente já tem.",
+                    key="prem_demanda"
+                )
+            with dem_col2:
+                custo_inversores_pct = st.number_input(
+                    "Substituição inversores (% CAPEX)",
+                    min_value=0.0, max_value=50.0, value=10.0, step=1.0, format="%.1f",
+                    key="prem_inv_pct"
+                ) / 100
+            with dem_col3:
+                ano_substituicao = st.number_input(
+                    "Ano de substituição inversores",
+                    min_value=0, max_value=30, value=13, step=1,
+                    help="0 = nunca substituir.",
+                    key="prem_ano_inv"
+                )
 
-    fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Geracao_Cortada_Visual"],
-        name="Geração Cortada",
-        mode="lines",
-        line=dict(color="#f97316", width=2.5, dash="dash", shape="spline", smoothing=1.2),
-        fill="tonexty",
-        fillcolor="rgba(249, 115, 22, 0.20)",
-        connectgaps=False
-    ))
+            # FINANCEIRO
+            st.markdown("**📈 Premissas Financeiras**")
+            fin_col1, fin_col2, fin_col3, fin_col4 = st.columns(4)
+            with fin_col1:
+                tma = st.number_input(
+                    "TMA (% a.a.)",
+                    min_value=0.0, max_value=30.0, value=10.5, step=0.5, format="%.2f",
+                    key="prem_tma"
+                ) / 100
+            with fin_col2:
+                inflacao = st.number_input(
+                    "Inflação (% a.a.)",
+                    min_value=0.0, max_value=20.0, value=6.0, step=0.5, format="%.2f",
+                    key="prem_inflacao"
+                ) / 100
+            with fin_col3:
+                juros_aa = st.number_input(
+                    "Juros financiamento (% a.a.)",
+                    min_value=0.0, max_value=30.0, value=0.0, step=0.5, format="%.2f",
+                    help="Zero se não houver financiamento.",
+                    key="prem_juros"
+                ) / 100
+            with fin_col4:
+                prazo_financiamento = st.number_input(
+                    "Prazo financiamento (anos)",
+                    min_value=0, max_value=30, value=0, step=1,
+                    key="prem_prazo"
+                )
 
-    fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Geracao_Limitada"],
-        name="Energia Aproveitada",
-        mode="lines",
-        line=dict(color="#16a34a", width=2.5, shape="spline", smoothing=1.2)
-    ))
+        # --- Calcular fluxo e indicadores ---
+        premissas = {
+            'vida_util': vida_util,
+            'capex_total': capex_total,
+            'capacidade_kwp': capacidade_kwp,
+            'preco_energia': preco_energia,
+            'ajuste_preco': ajuste_preco,
+            'inflacao': inflacao,
+            'degradacao': degradacao,
+            'custo_om_por_kwp': custo_om_por_kwp,
+            'custo_arr_por_kwp': custo_arr_por_kwp,
+            'custo_ga_por_kwp': custo_ga_por_kwp,
+            'seguro_pct': seguro_pct,
+            'demanda_extra_anual': demanda_extra_anual,
+            'custo_inversores_pct': custo_inversores_pct,
+            'ano_substituicao': ano_substituicao,
+            'juros_aa': juros_aa,
+            'prazo_financiamento': prazo_financiamento,
+        }
+        fluxo_caixa = calcular_fluxo_caixa(premissas, geracao_anual_kwh)
+        indicadores = calcular_indicadores_financeiros(fluxo_caixa, tma)
+        lcoe = calcular_lcoe(fluxo_caixa, capex_total, tma)
 
-    fig.add_trace(go.Scatter(
-        x=chart_df["DataHora"], y=chart_df["Energia_Light_Visual"],
-        name="Energia da Rede",
-        mode="lines",
-        line=dict(color="#9333ea", width=2.5, shape="spline", smoothing=1.2)
-    ))
-
-    fig.add_hline(y=0, line_width=2.5, line_color="black")
-
-    fig.update_layout(
-        height=520,
-        template="plotly_white",
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        hovermode="x unified",
-        font=dict(family="Arial, sans-serif", size=12, color="#1f2937"),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom", y=1.02,
-            xanchor="center", x=0.5,
-            bgcolor="rgba(255,255,255,0)",
-            font=dict(size=12, color="#1f2937")
-        ),
-        margin=dict(l=10, r=10, t=60, b=10),
-        xaxis=dict(
-            title="",
-            gridcolor="#cbd5e1",
-            showgrid=True,
-            tickfont=dict(color="#374151", size=11),
-            linecolor="#9ca3af",
-            rangeslider=dict(
-                visible=True,
-                thickness=0.08,
-                bgcolor="#f8fafc",
-                bordercolor="#9ca3af",
-                borderwidth=1
-            )
-        ),
-        yaxis=dict(
-            title=dict(
-                text="Potência (kW)",
-                font=dict(color="#1f2937", size=13)
-            ),
-            gridcolor="#cbd5e1",
-            tickfont=dict(color="#374151", size=11),
-            linecolor="#9ca3af",
-            zeroline=False
-        )
-    )
-
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-
-    # =====================================================
-    # CARDS DE RESUMO TOTAL — sempre do CSV inteiro
-    # =====================================================
-
-    st.markdown(
-        '<div class="section-title">📊 Resultado da Simulação '
-        '<span style="font-size:13px; font-weight:400; color:#6b7280;">'
-        '(total do período carregado)</span></div>',
-        unsafe_allow_html=True
-    )
-
-    # Linha 1: Valores de energia
-    st.markdown(
-        '<div style="font-size:13px; font-weight:600; color:#6b7280; margin-bottom:6px;">'
-        '⚡ Energia (kWh / MWh)</div>',
-        unsafe_allow_html=True
-    )
-
-    r1, r2, r3 = st.columns(3)
-    with r1:
+        # --- Cards de resultado financeiro ---
         st.markdown(
-            summary_box_html(
-                "Energia Importada (Light)",
-                fmt_energia(total_import_full),
-                "#2563eb", "summary-blue",
-                "Total de energia consumida da concessionária"
-            ),
-            unsafe_allow_html=True
-        )
-    with r2:
-        st.markdown(
-            summary_box_html(
-                "Energia Aproveitada",
-                fmt_energia(energia_aproveitada_full),
-                "#16a34a", "summary-green",
-                "Energia fornecida pela UFV efetivamente consumida"
-            ),
-            unsafe_allow_html=True
-        )
-    with r3:
-        st.markdown(
-            summary_box_html(
-                "Energia Cortada",
-                fmt_energia(energia_cortada_full),
-                "#dc2626", "summary-red",
-                "Energia desperdiçada pelo GridZero"
-            ),
-            unsafe_allow_html=True
-        )
-
-    # Linha 2: Indicadores percentuais
-    st.markdown(
-        '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
-        '📊 Indicadores de Desempenho</div>',
-        unsafe_allow_html=True
-    )
-
-    fc_color, fc_icon, fc_label = classificar_fator_cobertura(fator_cobertura_full)
-    td_color, td_icon, td_label = classificar_taxa_desperdicio(taxa_desperdicio_full)
-
-    if simultaneidade_full >= 80:
-        simul_class = "summary-green"
-        simul_color = "#16a34a"
-        simul_icon = "✅"
-        simul_label = "Excelente — Máximo aproveitamento da capacidade de geração."
-    elif simultaneidade_full >= 60:
-        simul_class = "summary-yellow"
-        simul_color = "#ca8a04"
-        simul_icon = "🔶"
-        simul_label = "Adequado — Bom equilíbrio de uso da usina durante o dia."
-    else:
-        simul_class = "summary-red"
-        simul_color = "#dc2626"
-        simul_icon = "⚠️"
-        simul_label = "Superdimensionado — Boa parte da capacidade do inversor está ociosa."
-
-    s1, s2, s3 = st.columns(3)
-    with s1:
-        st.markdown(
-            summary_box_html(
-                "Simultaneidade",
-                f"{simultaneidade_full:.1f}%",
-                simul_color, simul_class,
-                f"{simul_icon} {simul_label}",
-                DESC_SIMULTANEIDADE
-            ),
-            unsafe_allow_html=True
-        )
-    with s2:
-        st.markdown(
-            summary_box_html(
-                "Fator de Cobertura",
-                f"{fator_cobertura_full:.1f}%",
-                fc_color, "summary-green",
-                f"{fc_icon} {fc_label}",
-                DESC_FATOR_COBERTURA
-            ),
-            unsafe_allow_html=True
-        )
-    with s3:
-        st.markdown(
-            summary_box_html(
-                "Taxa de Desperdício",
-                f"{taxa_desperdicio_full:.1f}%",
-                td_color, "summary-orange",
-                f"{td_icon} {td_label}",
-                DESC_TAXA_DESPERDICIO
-            ),
+            '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
+            '📊 Indicadores Financeiros</div>',
             unsafe_allow_html=True
         )
 
-    # =====================================================
-    # TABELA
-    # =====================================================
+        fin1, fin2, fin3, fin4 = st.columns(4)
 
-    st.markdown(
-        '<div class="section-title">📋 Dados Operacionais '
-        '<span style="font-size:13px; font-weight:400; color:#6b7280;">'
-        '(últimos registros do que está sendo exibido)</span></div>',
-        unsafe_allow_html=True
-    )
-
-    tabela_src = chart_df[chart_df["DataHora"].dt.minute == 0].copy()
-    tabela_src["Status"] = tabela_src["Geracao_Cortada"].apply(
-        lambda x: "GridZero Ativo" if x > 0 else "Importando"
-    )
-    tabela_src = tabela_src[[
-        "DataHora", "Carga", "Geracao_Limitada",
-        "Geracao_Cortada", "Energia_Light", "Status"
-    ]].rename(columns={
-        "Carga": "Carga (kW)",
-        "Geracao_Limitada": "Energia Aproveitada (kW)",
-        "Geracao_Cortada": "Geração Cortada (kW)",
-        "Energia_Light": "Energia da Rede (kW)"
-    })
-
-    st.dataframe(
-        tabela_src.tail(20).iloc[::-1],
-        use_container_width=True,
-        height=320,
-        hide_index=True
-    )
-
-    # =====================================================
-    # 💰 ANÁLISE FINANCEIRA (GridZero)
-    # =====================================================
-
-    st.markdown(
-        '<div class="section-title">💰 Análise Financeira '
-        '<span style="font-size:13px; font-weight:400; color:#6b7280;">'
-        '(viabilidade econômica do projeto em modalidade GridZero)</span></div>',
-        unsafe_allow_html=True
-    )
-
-    # --- Dimensionar geração anual (estima ano cheio a partir do CSV) ---
-    # Pega só pontos originais e calcula soma anualizada
-    horas_no_csv = total_horas_full
-    if horas_no_csv > 0:
-        # Energia anual GridZero = total aproveitado projetado para 1 ano
-        geracao_anual_default = energia_aproveitada_full * (8760 / horas_no_csv)
-    else:
-        geracao_anual_default = 2_525_864  # fallback MELI
-
-    # --- Painel de premissas (expansível) ---
-    with st.expander("⚙️ Premissas do Projeto (clique para ajustar)", expanded=False):
-        st.markdown(
-            '<div style="font-size:12px; color:#6b7280; margin-bottom:10px;">'
-            'Valores baseados no projeto MELI/Prologis Dutra II. Ajuste conforme necessário.'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        # SISTEMA
-        st.markdown("**🔧 Sistema**")
-        sys_col1, sys_col2, sys_col3, sys_col4 = st.columns(4)
-        with sys_col1:
-            capacidade_kwp = st.number_input(
-                "Potência (kWp)",
-                min_value=0.0, value=6315.84, step=10.0, format="%.2f",
-                key="prem_kwp"
-            )
-        with sys_col2:
-            custo_kwp = st.number_input(
-                "Custo (R$/kWp)",
-                min_value=0.0, value=4400.0, step=100.0, format="%.2f",
-                key="prem_custo_kwp"
-            )
-        with sys_col3:
-            vida_util = st.number_input(
-                "Vida útil (anos)",
-                min_value=10, max_value=40, value=30, step=1,
-                key="prem_vida"
-            )
-        with sys_col4:
-            degradacao = st.number_input(
-                "Degradação (% a.a.)",
-                min_value=0.0, max_value=2.0, value=0.35, step=0.05, format="%.2f",
-                key="prem_degradacao"
-            ) / 100
-
-        capex_total = capacidade_kwp * custo_kwp
-        st.markdown(
-            f'<div style="font-size:13px; color:#374151; margin-top:-4px;">'
-            f'💵 <b>CAPEX total</b>: {fmt_energia(capex_total).replace(" kWh","").replace(" MWh","")} '
-            f'(R$ {capex_total:,.0f})</div>'.replace(",", "."),
-            unsafe_allow_html=True
-        )
-
-        # GERAÇÃO E TARIFA
-        st.markdown("**⚡ Geração e Tarifa**")
-        ger_col1, ger_col2, ger_col3 = st.columns(3)
-        with ger_col1:
-            geracao_anual_kwh = st.number_input(
-                "Geração anual líquida (kWh)",
-                min_value=0.0, value=float(geracao_anual_default), step=1000.0, format="%.0f",
-                help="Estimativa anual a partir do CSV (energia aproveitada projetada para 8.760 h).",
-                key="prem_ger_anual"
-            )
-        with ger_col2:
-            preco_energia = st.number_input(
-                "Preço energia (R$/kWh)",
-                min_value=0.0, value=0.5317, step=0.01, format="%.4f",
-                key="prem_preco"
-            )
-        with ger_col3:
-            ajuste_preco = st.number_input(
-                "Ajuste tarifa (% a.a.)",
-                min_value=0.0, max_value=20.0, value=8.0, step=0.5, format="%.2f",
-                key="prem_ajuste"
-            ) / 100
-
-        # DESPESAS OPERACIONAIS
-        st.markdown("**🏗️ Despesas Operacionais (anuais)**")
-        des_col1, des_col2, des_col3, des_col4 = st.columns(4)
-        with des_col1:
-            custo_om_por_kwp = st.number_input(
-                "O&M (R$/kWp/ano)",
-                min_value=0.0, value=60.0, step=5.0, format="%.2f",
-                key="prem_om"
-            )
-        with des_col2:
-            custo_arr_por_kwp = st.number_input(
-                "Arrendamento (R$/kWp/ano)",
-                min_value=0.0, value=22.0, step=1.0, format="%.2f",
-                key="prem_arr"
-            )
-        with des_col3:
-            custo_ga_por_kwp = st.number_input(
-                "Rateio G&A (R$/kWp/ano)",
-                min_value=0.0, value=11.0, step=1.0, format="%.2f",
-                key="prem_ga"
-            )
-        with des_col4:
-            seguro_pct = st.number_input(
-                "Seguro (% CAPEX/ano)",
-                min_value=0.0, max_value=5.0, value=0.30, step=0.05, format="%.2f",
-                key="prem_seguro"
-            ) / 100
-
-        dem_col1, dem_col2, dem_col3 = st.columns(3)
-        with dem_col1:
-            demanda_extra_anual = st.number_input(
-                "Demanda adicional (R$/ano)",
-                min_value=0.0, value=353106.0, step=1000.0, format="%.0f",
-                help="Custo adicional de demanda contratada quando a usina exige mais demanda do que o cliente já tem.",
-                key="prem_demanda"
-            )
-        with dem_col2:
-            custo_inversores_pct = st.number_input(
-                "Substituição inversores (% CAPEX)",
-                min_value=0.0, max_value=50.0, value=10.0, step=1.0, format="%.1f",
-                key="prem_inv_pct"
-            ) / 100
-        with dem_col3:
-            ano_substituicao = st.number_input(
-                "Ano de substituição inversores",
-                min_value=0, max_value=30, value=13, step=1,
-                help="0 = nunca substituir.",
-                key="prem_ano_inv"
-            )
-
-        # FINANCEIRO
-        st.markdown("**📈 Premissas Financeiras**")
-        fin_col1, fin_col2, fin_col3, fin_col4 = st.columns(4)
-        with fin_col1:
-            tma = st.number_input(
-                "TMA (% a.a.)",
-                min_value=0.0, max_value=30.0, value=10.5, step=0.5, format="%.2f",
-                key="prem_tma"
-            ) / 100
-        with fin_col2:
-            inflacao = st.number_input(
-                "Inflação (% a.a.)",
-                min_value=0.0, max_value=20.0, value=6.0, step=0.5, format="%.2f",
-                key="prem_inflacao"
-            ) / 100
-        with fin_col3:
-            juros_aa = st.number_input(
-                "Juros financiamento (% a.a.)",
-                min_value=0.0, max_value=30.0, value=0.0, step=0.5, format="%.2f",
-                help="Zero se não houver financiamento.",
-                key="prem_juros"
-            ) / 100
-        with fin_col4:
-            prazo_financiamento = st.number_input(
-                "Prazo financiamento (anos)",
-                min_value=0, max_value=30, value=0, step=1,
-                key="prem_prazo"
-            )
-
-    # --- Calcular fluxo e indicadores ---
-    premissas = {
-        'vida_util': vida_util,
-        'capex_total': capex_total,
-        'capacidade_kwp': capacidade_kwp,
-        'preco_energia': preco_energia,
-        'ajuste_preco': ajuste_preco,
-        'inflacao': inflacao,
-        'degradacao': degradacao,
-        'custo_om_por_kwp': custo_om_por_kwp,
-        'custo_arr_por_kwp': custo_arr_por_kwp,
-        'custo_ga_por_kwp': custo_ga_por_kwp,
-        'seguro_pct': seguro_pct,
-        'demanda_extra_anual': demanda_extra_anual,
-        'custo_inversores_pct': custo_inversores_pct,
-        'ano_substituicao': ano_substituicao,
-        'juros_aa': juros_aa,
-        'prazo_financiamento': prazo_financiamento,
-    }
-    fluxo_caixa = calcular_fluxo_caixa(premissas, geracao_anual_kwh)
-    indicadores = calcular_indicadores_financeiros(fluxo_caixa, tma)
-    lcoe = calcular_lcoe(fluxo_caixa, capex_total, tma)
-
-    # --- Cards de resultado financeiro ---
-    st.markdown(
-        '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:14px 0 6px 0;">'
-        '📊 Indicadores Financeiros</div>',
-        unsafe_allow_html=True
-    )
-
-    fin1, fin2, fin3, fin4 = st.columns(4)
-
-    with fin1:
-        payback = indicadores['payback_anos']
-        if payback is None:
-            payback_text = f"> {vida_util} anos"
-            pb_color, pb_class, pb_diag = "#dc2626", "summary-red", "⚠️ Investimento não se paga na vida útil."
-        elif payback < 8:
-            payback_text = f"{payback:.1f} anos"
-            pb_color, pb_class, pb_diag = "#16a34a", "summary-green", "✅ Excelente — Retorno rápido."
-        elif payback < 15:
-            payback_text = f"{payback:.1f} anos"
-            pb_color, pb_class, pb_diag = "#ca8a04", "summary-yellow", "🔶 Moderado — Retorno em prazo típico."
-        else:
-            payback_text = f"{payback:.1f} anos"
-            pb_color, pb_class, pb_diag = "#dc2626", "summary-red", "⚠️ Longo — Retorno demorado."
-        st.markdown(
-            summary_box_html(
-                "Payback Simples",
-                payback_text,
-                pb_color, pb_class,
-                pb_diag,
-                "Tempo para o saldo acumulado cruzar zero."
-            ),
-            unsafe_allow_html=True
-        )
-
-    with fin2:
-        tir = indicadores['tir']
-        if tir is None:
-            tir_text = "—"
-            tir_color, tir_class, tir_diag = "#64748b", "summary-red", "Não foi possível calcular."
-        else:
-            tir_text = f"{tir*100:.2f}%"
-            if tir >= tma:
-                tir_color, tir_class = "#16a34a", "summary-green"
-                tir_diag = f"✅ Acima da TMA ({tma*100:.1f}%)."
-            elif tir >= tma * 0.7:
-                tir_color, tir_class = "#ca8a04", "summary-yellow"
-                tir_diag = f"🔶 Próximo da TMA ({tma*100:.1f}%)."
+        with fin1:
+            payback = indicadores['payback_anos']
+            if payback is None:
+                payback_text = f"> {vida_util} anos"
+                pb_color, pb_class, pb_diag = "#dc2626", "summary-red", "⚠️ Investimento não se paga na vida útil."
+            elif payback < 8:
+                payback_text = f"{payback:.1f} anos"
+                pb_color, pb_class, pb_diag = "#16a34a", "summary-green", "✅ Excelente — Retorno rápido."
+            elif payback < 15:
+                payback_text = f"{payback:.1f} anos"
+                pb_color, pb_class, pb_diag = "#ca8a04", "summary-yellow", "🔶 Moderado — Retorno em prazo típico."
             else:
-                tir_color, tir_class = "#dc2626", "summary-red"
-                tir_diag = f"⚠️ Abaixo da TMA ({tma*100:.1f}%)."
+                payback_text = f"{payback:.1f} anos"
+                pb_color, pb_class, pb_diag = "#dc2626", "summary-red", "⚠️ Longo — Retorno demorado."
+            st.markdown(
+                summary_box_html(
+                    "Payback Simples",
+                    payback_text,
+                    pb_color, pb_class,
+                    pb_diag,
+                    "Tempo para o saldo acumulado cruzar zero."
+                ),
+                unsafe_allow_html=True
+            )
+
+        with fin2:
+            tir = indicadores['tir']
+            if tir is None:
+                tir_text = "—"
+                tir_color, tir_class, tir_diag = "#64748b", "summary-red", "Não foi possível calcular."
+            else:
+                tir_text = f"{tir*100:.2f}%"
+                if tir >= tma:
+                    tir_color, tir_class = "#16a34a", "summary-green"
+                    tir_diag = f"✅ Acima da TMA ({tma*100:.1f}%)."
+                elif tir >= tma * 0.7:
+                    tir_color, tir_class = "#ca8a04", "summary-yellow"
+                    tir_diag = f"🔶 Próximo da TMA ({tma*100:.1f}%)."
+                else:
+                    tir_color, tir_class = "#dc2626", "summary-red"
+                    tir_diag = f"⚠️ Abaixo da TMA ({tma*100:.1f}%)."
+            st.markdown(
+                summary_box_html(
+                    "TIR",
+                    tir_text,
+                    tir_color, tir_class,
+                    tir_diag,
+                    "Taxa interna de retorno do projeto."
+                ),
+                unsafe_allow_html=True
+            )
+
+        with fin3:
+            vpl = indicadores['vpl']
+            if vpl >= 0:
+                vpl_color, vpl_class, vpl_diag = "#16a34a", "summary-green", "✅ Projeto cria valor."
+            else:
+                vpl_color, vpl_class, vpl_diag = "#dc2626", "summary-red", "⚠️ Projeto destrói valor."
+            vpl_text = fmt_energia(vpl).replace(" kWh", "").replace(" MWh", "")
+            # Adicionar prefixo R$
+            if abs(vpl) >= 10_000:
+                vpl_text_disp = f"R$ {vpl/1_000_000:,.2f} M".replace(",", "X").replace(".", ",").replace("X", ".")
+            else:
+                vpl_text_disp = f"R$ {fmt_int(vpl)}"
+            st.markdown(
+                summary_box_html(
+                    "VPL",
+                    vpl_text_disp,
+                    vpl_color, vpl_class,
+                    vpl_diag,
+                    f"Valor presente líquido a TMA de {tma*100:.1f}%."
+                ),
+                unsafe_allow_html=True
+            )
+
+        with fin4:
+            if preco_energia > 0:
+                economia_pct = (1 - lcoe / preco_energia) * 100
+            else:
+                economia_pct = 0
+            if lcoe < preco_energia * 0.6:
+                lcoe_color, lcoe_class, lcoe_diag = "#16a34a", "summary-green", f"✅ {economia_pct:.0f}% mais barato que a tarifa atual."
+            elif lcoe < preco_energia:
+                lcoe_color, lcoe_class, lcoe_diag = "#ca8a04", "summary-yellow", f"🔶 {economia_pct:.0f}% mais barato que a tarifa atual."
+            else:
+                lcoe_color, lcoe_class, lcoe_diag = "#dc2626", "summary-red", "⚠️ Mais caro que a tarifa atual."
+            st.markdown(
+                summary_box_html(
+                    "LCOE Solar",
+                    f"R$ {lcoe:.4f}/kWh".replace(".", ","),
+                    lcoe_color, lcoe_class,
+                    lcoe_diag,
+                    f"Custo nivelado da energia solar vs R$ {preco_energia:.4f}/kWh da rede.".replace(".", ",")
+                ),
+                unsafe_allow_html=True
+            )
+
+        # --- Gráfico de Payback (saldo acumulado ao longo do tempo) ---
         st.markdown(
-            summary_box_html(
-                "TIR",
-                tir_text,
-                tir_color, tir_class,
-                tir_diag,
-                "Taxa interna de retorno do projeto."
-            ),
+            '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:18px 0 6px 0;">'
+            '📈 Curva de Payback — Saldo Acumulado</div>',
             unsafe_allow_html=True
         )
 
-    with fin3:
-        vpl = indicadores['vpl']
-        if vpl >= 0:
-            vpl_color, vpl_class, vpl_diag = "#16a34a", "summary-green", "✅ Projeto cria valor."
-        else:
-            vpl_color, vpl_class, vpl_diag = "#dc2626", "summary-red", "⚠️ Projeto destrói valor."
-        vpl_text = fmt_energia(vpl).replace(" kWh", "").replace(" MWh", "")
-        # Adicionar prefixo R$
-        if abs(vpl) >= 10_000:
-            vpl_text_disp = f"R$ {vpl/1_000_000:,.2f} M".replace(",", "X").replace(".", ",").replace("X", ".")
-        else:
-            vpl_text_disp = f"R$ {fmt_int(vpl)}"
-        st.markdown(
-            summary_box_html(
-                "VPL",
-                vpl_text_disp,
-                vpl_color, vpl_class,
-                vpl_diag,
-                f"Valor presente líquido a TMA de {tma*100:.1f}%."
+        fig_pb = go.Figure()
+
+        # Linha do saldo acumulado
+        cores_saldo = [
+            "#dc2626" if s < 0 else "#16a34a"
+            for s in fluxo_caixa['Saldo_Acumulado']
+        ]
+
+        fig_pb.add_trace(go.Scatter(
+            x=fluxo_caixa['Ano'],
+            y=fluxo_caixa['Saldo_Acumulado'],
+            mode='lines+markers',
+            name='Saldo Acumulado',
+            line=dict(color='#2563eb', width=3),
+            marker=dict(size=6, color=cores_saldo, line=dict(width=1, color='#1f2937')),
+            fill='tozeroy',
+            fillcolor='rgba(37, 99, 235, 0.08)',
+            hovertemplate='Ano %{x}<br>Saldo: R$ %{y:,.0f}<extra></extra>'
+        ))
+
+        # Linha zero de referência
+        fig_pb.add_hline(y=0, line_width=2, line_color='#1f2937', line_dash='solid')
+
+        # Marcação do payback se houver
+        if indicadores['payback_anos'] is not None:
+            fig_pb.add_vline(
+                x=indicadores['payback_anos'],
+                line_width=2,
+                line_color='#16a34a',
+                line_dash='dash',
+                annotation_text=f"Payback: {indicadores['payback_anos']:.1f} anos",
+                annotation_position="top right",
+                annotation_font=dict(color='#16a34a', size=13)
+            )
+
+        fig_pb.update_layout(
+            height=400,
+            template='plotly_white',
+            paper_bgcolor='white',
+            plot_bgcolor='white',
+            hovermode='x unified',
+            font=dict(family='Arial, sans-serif', size=12, color='#1f2937'),
+            showlegend=False,
+            margin=dict(l=10, r=10, t=20, b=10),
+            xaxis=dict(
+                title=dict(text='Ano', font=dict(color='#1f2937', size=13)),
+                gridcolor='#cbd5e1',
+                tickfont=dict(color='#374151', size=11),
+                linecolor='#9ca3af',
+                dtick=2
             ),
+            yaxis=dict(
+                title=dict(text='Saldo Acumulado (R$)', font=dict(color='#1f2937', size=13)),
+                gridcolor='#cbd5e1',
+                tickfont=dict(color='#374151', size=11),
+                linecolor='#9ca3af',
+                zeroline=False,
+                tickformat=',.0f'
+            )
+        )
+
+        st.plotly_chart(fig_pb, use_container_width=True, config={'displayModeBar': False})
+
+        # --- Tabela de Fluxo de Caixa Anual ---
+        st.markdown(
+            '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:18px 0 6px 0;">'
+            '📋 Fluxo de Caixa Anual</div>',
             unsafe_allow_html=True
         )
 
-    with fin4:
-        if preco_energia > 0:
-            economia_pct = (1 - lcoe / preco_energia) * 100
-        else:
-            economia_pct = 0
-        if lcoe < preco_energia * 0.6:
-            lcoe_color, lcoe_class, lcoe_diag = "#16a34a", "summary-green", f"✅ {economia_pct:.0f}% mais barato que a tarifa atual."
-        elif lcoe < preco_energia:
-            lcoe_color, lcoe_class, lcoe_diag = "#ca8a04", "summary-yellow", f"🔶 {economia_pct:.0f}% mais barato que a tarifa atual."
-        else:
-            lcoe_color, lcoe_class, lcoe_diag = "#dc2626", "summary-red", "⚠️ Mais caro que a tarifa atual."
-        st.markdown(
-            summary_box_html(
-                "LCOE Solar",
-                f"R$ {lcoe:.4f}/kWh".replace(".", ","),
-                lcoe_color, lcoe_class,
-                lcoe_diag,
-                f"Custo nivelado da energia solar vs R$ {preco_energia:.4f}/kWh da rede.".replace(".", ",")
-            ),
-            unsafe_allow_html=True
+        tabela_fluxo = fluxo_caixa[[
+            'Ano', 'Geracao_kWh', 'Faturamento', 'Despesas_Op',
+            'Resultado_Liquido', 'Saldo_Acumulado'
+        ]].copy()
+        tabela_fluxo.columns = [
+            'Ano', 'Geração (kWh)', 'Faturamento (R$)', 'Despesas Op. (R$)',
+            'Resultado Líquido (R$)', 'Saldo Acumulado (R$)'
+        ]
+
+        # Formatar valores numéricos
+        def fmt_brl(v):
+            if pd.isna(v) or v == 0:
+                return "—"
+            return f"R$ {v:,.0f}".replace(",", ".")
+
+        tabela_fluxo_disp = tabela_fluxo.copy()
+        tabela_fluxo_disp['Geração (kWh)'] = tabela_fluxo_disp['Geração (kWh)'].apply(
+            lambda v: f"{v:,.0f}".replace(",", ".") if v > 0 else "—"
         )
+        for col in ['Faturamento (R$)', 'Despesas Op. (R$)', 'Resultado Líquido (R$)', 'Saldo Acumulado (R$)']:
+            tabela_fluxo_disp[col] = tabela_fluxo_disp[col].apply(fmt_brl)
 
-    # --- Gráfico de Payback (saldo acumulado ao longo do tempo) ---
-    st.markdown(
-        '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:18px 0 6px 0;">'
-        '📈 Curva de Payback — Saldo Acumulado</div>',
-        unsafe_allow_html=True
-    )
-
-    fig_pb = go.Figure()
-
-    # Linha do saldo acumulado
-    cores_saldo = [
-        "#dc2626" if s < 0 else "#16a34a"
-        for s in fluxo_caixa['Saldo_Acumulado']
-    ]
-
-    fig_pb.add_trace(go.Scatter(
-        x=fluxo_caixa['Ano'],
-        y=fluxo_caixa['Saldo_Acumulado'],
-        mode='lines+markers',
-        name='Saldo Acumulado',
-        line=dict(color='#2563eb', width=3),
-        marker=dict(size=6, color=cores_saldo, line=dict(width=1, color='#1f2937')),
-        fill='tozeroy',
-        fillcolor='rgba(37, 99, 235, 0.08)',
-        hovertemplate='Ano %{x}<br>Saldo: R$ %{y:,.0f}<extra></extra>'
-    ))
-
-    # Linha zero de referência
-    fig_pb.add_hline(y=0, line_width=2, line_color='#1f2937', line_dash='solid')
-
-    # Marcação do payback se houver
-    if indicadores['payback_anos'] is not None:
-        fig_pb.add_vline(
-            x=indicadores['payback_anos'],
-            line_width=2,
-            line_color='#16a34a',
-            line_dash='dash',
-            annotation_text=f"Payback: {indicadores['payback_anos']:.1f} anos",
-            annotation_position="top right",
-            annotation_font=dict(color='#16a34a', size=13)
+        st.dataframe(
+            tabela_fluxo_disp,
+            use_container_width=True,
+            height=420,
+            hide_index=True
         )
-
-    fig_pb.update_layout(
-        height=400,
-        template='plotly_white',
-        paper_bgcolor='white',
-        plot_bgcolor='white',
-        hovermode='x unified',
-        font=dict(family='Arial, sans-serif', size=12, color='#1f2937'),
-        showlegend=False,
-        margin=dict(l=10, r=10, t=20, b=10),
-        xaxis=dict(
-            title=dict(text='Ano', font=dict(color='#1f2937', size=13)),
-            gridcolor='#cbd5e1',
-            tickfont=dict(color='#374151', size=11),
-            linecolor='#9ca3af',
-            dtick=2
-        ),
-        yaxis=dict(
-            title=dict(text='Saldo Acumulado (R$)', font=dict(color='#1f2937', size=13)),
-            gridcolor='#cbd5e1',
-            tickfont=dict(color='#374151', size=11),
-            linecolor='#9ca3af',
-            zeroline=False,
-            tickformat=',.0f'
-        )
-    )
-
-    st.plotly_chart(fig_pb, use_container_width=True, config={'displayModeBar': False})
-
-    # --- Tabela de Fluxo de Caixa Anual ---
-    st.markdown(
-        '<div style="font-size:13px; font-weight:600; color:#6b7280; margin:18px 0 6px 0;">'
-        '📋 Fluxo de Caixa Anual</div>',
-        unsafe_allow_html=True
-    )
-
-    tabela_fluxo = fluxo_caixa[[
-        'Ano', 'Geracao_kWh', 'Faturamento', 'Despesas_Op',
-        'Resultado_Liquido', 'Saldo_Acumulado'
-    ]].copy()
-    tabela_fluxo.columns = [
-        'Ano', 'Geração (kWh)', 'Faturamento (R$)', 'Despesas Op. (R$)',
-        'Resultado Líquido (R$)', 'Saldo Acumulado (R$)'
-    ]
-
-    # Formatar valores numéricos
-    def fmt_brl(v):
-        if pd.isna(v) or v == 0:
-            return "—"
-        return f"R$ {v:,.0f}".replace(",", ".")
-
-    tabela_fluxo_disp = tabela_fluxo.copy()
-    tabela_fluxo_disp['Geração (kWh)'] = tabela_fluxo_disp['Geração (kWh)'].apply(
-        lambda v: f"{v:,.0f}".replace(",", ".") if v > 0 else "—"
-    )
-    for col in ['Faturamento (R$)', 'Despesas Op. (R$)', 'Resultado Líquido (R$)', 'Saldo Acumulado (R$)']:
-        tabela_fluxo_disp[col] = tabela_fluxo_disp[col].apply(fmt_brl)
-
-    st.dataframe(
-        tabela_fluxo_disp,
-        use_container_width=True,
-        height=420,
-        hide_index=True
-    )
 
     # =====================================================
     # AUTO PLAY — somente no modo Replay
