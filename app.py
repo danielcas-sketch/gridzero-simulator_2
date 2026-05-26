@@ -2387,7 +2387,7 @@ if generation_file and load_file:
 </body>
 </html>
 """
-            components.html(html_wrapper, height=2020, scrolling=False)
+            components.html(html_wrapper, height=2420, scrolling=False)
 
         # Cards informativos abaixo do diagrama
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
