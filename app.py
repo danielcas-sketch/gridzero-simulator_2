@@ -782,6 +782,14 @@ if "intervalo_inicio" not in st.session_state:
 if "intervalo_fim" not in st.session_state:
     st.session_state.intervalo_fim = None
 
+# Simulação de falha de camadas
+if "sim_falha_camada" not in st.session_state:
+    st.session_state.sim_falha_camada = None  # qual camada falhou: 0, 1, 2, 3 ou None
+if "sim_falha_ts" not in st.session_state:
+    st.session_state.sim_falha_ts = None  # timestamp do início da falha
+if "sim_speed" not in st.session_state:
+    st.session_state.sim_speed = 0.3  # segundos reais por segundo simulado
+
 
 # =========================================================
 # CALLBACKS
@@ -811,6 +819,18 @@ def aplicar_atalho_intervalo(dias, df):
         inicio = fim - pd.Timedelta(days=dias)
         st.session_state.intervalo_inicio = max(inicio, df["DataHora"].min().date())
         st.session_state.intervalo_fim = fim
+
+
+# Callbacks da simulação de falha
+def disparar_falha(camada):
+    """Marca a camada como falha e registra o tempo de início."""
+    st.session_state.sim_falha_camada = camada
+    st.session_state.sim_falha_ts = time.time()
+
+def resetar_falha():
+    """Reseta o estado de falha."""
+    st.session_state.sim_falha_camada = None
+    st.session_state.sim_falha_ts = None
 
 
 # =========================================================
@@ -2004,52 +2024,127 @@ if generation_file and load_file:
                 unsafe_allow_html=True
             )
 
-            # Camada 0: controle DEIF (ativa quando há geração)
-            # Camada 1: ANSI 32 do AGC-150 (standby — só atua em falha de controle)
-            # Camada 2: Relé auxiliar (standby)
-            # Camada 3: 7SR1004 no PMT (standby)
+            # Configuração das camadas: (numero, nome, descricao, tempo_atuacao_s)
+            camadas_config = [
+                (0, "Controle DEIF (laço fechado)", "AGC-150 lê potência e envia setpoint aos ASCs", 0),
+                (1, "ANSI 32 do AGC-150", "Atua nos disjuntores BT em 3 s", 3),
+                (2, "Relé auxiliar ANSI 32", "Atua nos disjuntores BT em 6 s", 6),
+                (3, "Siemens 7SR1004 (MT)", "Abre disjuntor de MT do PMT em 10 s", 10),
+            ]
+
+            # Cálculo do tempo simulado decorrido desde a falha
+            falha_atual = st.session_state.sim_falha_camada
+            falha_ts = st.session_state.sim_falha_ts
+            speed = st.session_state.sim_speed
+
+            if falha_atual is not None and falha_ts is not None:
+                tempo_real = time.time() - falha_ts
+                # Tempo simulado: 1 segundo simulado = `speed` segundos reais
+                tempo_simulado = tempo_real / speed
+            else:
+                tempo_simulado = 0
+
+            # Determinar estado de cada camada
+            # Camada 0 está ATIVA se há geração e ninguém falhou ainda
+            # Quando uma camada N falha, ela vira "FALHA" e as superiores começam contagem
+            # Cada camada superior atua quando tempo_simulado >= seu tempo_atuacao
             c0_ativo = sim_geracao > 0
-            c0_cor = "#16a34a" if c0_ativo else "#9ca3af"
-            c0_status = "ATIVO" if c0_ativo else "standby"
 
-            def camada_row(num, nome, descricao, status, cor):
-                bg_cor = "#f0fdf4" if cor == "#16a34a" else "#f9fafb"
-                return f"""<div style="background:{bg_cor}; border-left:3px solid {cor};
-                border-radius:6px; padding:8px 10px; margin-bottom:5px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <span style="font-size:12px; font-weight:700; color:#1f2937;">Camada {num}</span>
-                        <span style="font-size:11px; color:#6b7280; margin-left:4px;">— {nome}</span>
-                    </div>
-                    <span style="font-size:10px; font-weight:700; color:{cor}; letter-spacing:0.05em;">
-                    {status}</span>
-                </div>
-                <div style="font-size:10px; color:#6b7280; margin-top:2px; line-height:1.3;">{descricao}</div>
-                </div>"""
+            def estado_camada(num, tempo_atuacao):
+                """Retorna (status, cor, tempo_restante, atuou)"""
+                if falha_atual is None:
+                    # Sem falha simulada
+                    if num == 0:
+                        return ("ATIVO" if c0_ativo else "standby",
+                                "#16a34a" if c0_ativo else "#9ca3af",
+                                None, False)
+                    else:
+                        return ("standby", "#9ca3af", None, False)
+                else:
+                    # Há falha em alguma camada
+                    if num == falha_atual:
+                        return ("⚠️ FALHA", "#dc2626", None, False)
+                    elif num < falha_atual:
+                        # Camadas anteriores à falhada permanecem ativas/standby normalmente
+                        if num == 0:
+                            return ("ATIVO" if c0_ativo else "standby",
+                                    "#16a34a" if c0_ativo else "#9ca3af",
+                                    None, False)
+                        return ("standby", "#9ca3af", None, False)
+                    else:
+                        # Camadas superiores à falhada: contam tempo
+                        if tempo_simulado >= tempo_atuacao:
+                            return ("⚡ ATUOU", "#16a34a", 0, True)
+                        else:
+                            restante = tempo_atuacao - tempo_simulado
+                            return ("⏱ contando", "#ca8a04", restante, False)
 
-            st.markdown(camada_row(
-                "0", "Controle DEIF (laço fechado)",
-                "AGC-150 lê potência e envia setpoint aos ASCs",
-                c0_status, c0_cor
-            ), unsafe_allow_html=True)
+            def camada_row_v2(num, nome, descricao, status, cor, tempo_restante, atuou):
+                bg_cor = "#f0fdf4" if cor == "#16a34a" else (
+                    "#fef2f2" if cor == "#dc2626" else (
+                        "#fefce8" if cor == "#ca8a04" else "#f9fafb"
+                    )
+                )
+                # Cronômetro
+                if tempo_restante is not None:
+                    if atuou:
+                        timer_html = '<span style="font-size:14px; font-weight:700; color:#16a34a;">00.0s</span>'
+                    else:
+                        timer_html = f'<span style="font-size:14px; font-weight:700; color:#ca8a04;">{tempo_restante:04.1f}s</span>'
+                else:
+                    timer_html = '<span style="font-size:12px; color:#9ca3af;">—</span>'
 
-            st.markdown(camada_row(
-                "1", "ANSI 32 do AGC-150",
-                "Atua nos disjuntores BT em 2–3 s",
-                "standby", "#9ca3af"
-            ), unsafe_allow_html=True)
+                return (
+                    f'<div style="background:{bg_cor}; border-left:3px solid {cor}; '
+                    f'border-radius:6px; padding:8px 10px; margin-bottom:5px;">'
+                    f'<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">'
+                    f'<div style="flex:1;">'
+                    f'<span style="font-size:12px; font-weight:700; color:#1f2937;">Camada {num}</span>'
+                    f'<span style="font-size:11px; color:#6b7280; margin-left:4px;">— {nome}</span>'
+                    f'</div>'
+                    f'<div style="background:white; border:1px solid #e5e7eb; border-radius:4px; '
+                    f'padding:2px 6px; min-width:54px; text-align:center;">{timer_html}</div>'
+                    f'<span style="font-size:10px; font-weight:700; color:{cor}; '
+                    f'letter-spacing:0.05em; min-width:65px; text-align:right;">{status}</span>'
+                    f'</div>'
+                    f'<div style="font-size:10px; color:#6b7280; margin-top:2px; line-height:1.3;">{descricao}</div>'
+                    f'</div>'
+                )
 
-            st.markdown(camada_row(
-                "2", "Relé auxiliar ANSI 32",
-                "Atua nos disjuntores BT em 5–7 s",
-                "standby", "#9ca3af"
-            ), unsafe_allow_html=True)
+            # Renderizar cada camada + botão de falha
+            for num, nome, descricao, t_atuacao in camadas_config:
+                status, cor, t_rest, atuou = estado_camada(num, t_atuacao)
+                st.markdown(
+                    camada_row_v2(num, nome, descricao, status, cor, t_rest, atuou),
+                    unsafe_allow_html=True
+                )
+                # Botão de falha embaixo de cada camada (exceto se já há falha em outra camada)
+                if falha_atual is None:
+                    st.button(
+                        f"💥 Simular Falha da Camada {num}",
+                        key=f"btn_falha_c{num}",
+                        on_click=disparar_falha,
+                        args=(num,),
+                        use_container_width=True
+                    )
 
-            st.markdown(camada_row(
-                "3", "Siemens 7SR1004 (MT)",
-                "Abre disjuntor de MT do PMT em 8–10 s",
-                "standby", "#9ca3af"
-            ), unsafe_allow_html=True)
+            # Botão de reset se há falha ativa
+            if falha_atual is not None:
+                st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+                st.button(
+                    "↻ Resetar Simulação de Falha",
+                    key="btn_reset_falha",
+                    on_click=resetar_falha,
+                    use_container_width=True,
+                    type="primary"
+                )
+                st.markdown(
+                    f"<div style='font-size:11px; color:#6b7280; text-align:center; margin-top:6px;'>"
+                    f"Tempo decorrido: <b style='color:#1f2937;'>{tempo_simulado:.1f}s</b> simulados "
+                    f"({(time.time() - falha_ts):.1f}s reais)"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
 
         with col_diagrama:
             # =====================================================
@@ -2076,7 +2171,17 @@ if generation_file and load_file:
             # Cores e estados
             cor_seta_rede = "#9333ea" if energia_rede > 0 else "#cbd5e1"
             cor_seta_solar = "#16a34a" if geracao_efetiva > 0 else "#cbd5e1"
-            cor_agc_ativo = "#16a34a" if c0_ativo else "#9ca3af"
+
+            # Status visual do AGC-150 (Camada 0)
+            if falha_atual == 0:
+                cor_agc_ativo = "#dc2626"
+                c0_status = "⚠️ FALHA"
+            elif c0_ativo:
+                cor_agc_ativo = "#16a34a"
+                c0_status = "ATIVO"
+            else:
+                cor_agc_ativo = "#9ca3af"
+                c0_status = "standby"
 
             # Opacidade dos inversores conforme corte
             # Se há corte, mostra que estão "limitados" (semi-transparente no topo)
@@ -2424,6 +2529,19 @@ if generation_file and load_file:
             </div></div>""",
             unsafe_allow_html=True
         )
+
+        # Auto-refresh enquanto há falha ativa e ainda restam camadas contando
+        if st.session_state.sim_falha_camada is not None:
+            falha_n = st.session_state.sim_falha_camada
+            tempos_atuacao = {1: 3, 2: 6, 3: 10}
+            # tempo máximo entre as camadas superiores à que falhou
+            tempos_superiores = [t for c, t in tempos_atuacao.items() if c > falha_n]
+            if tempos_superiores:
+                tempo_max = max(tempos_superiores)
+                tempo_decorrido = (time.time() - st.session_state.sim_falha_ts) / st.session_state.sim_speed
+                if tempo_decorrido < tempo_max + 1:  # +1s de folga após última atuação
+                    time.sleep(0.15)
+                    st.rerun()
 
     # =====================================================
     # AUTO PLAY — somente no modo Replay
