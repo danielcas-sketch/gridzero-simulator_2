@@ -2226,6 +2226,14 @@ if generation_file and load_file:
                 cor_agc_ativo = "#9ca3af"
                 c0_status = "standby"
 
+            # Disjuntores BT-UFV: roxo fechado / vermelho aberto quando camada 1 ou 2 atua
+            c1_atuou = ciclo_iniciado and not st.session_state.sim_falha_c1 and tempo_simulado >= tempos_atuacao[1]
+            c2_atuou = ciclo_iniciado and st.session_state.sim_falha_c1 and not st.session_state.sim_falha_c2 and tempo_simulado >= tempos_atuacao[2]
+            bt_ufv_atuou = c1_atuou or c2_atuou
+            bt_ufv_stroke = "#dc2626" if bt_ufv_atuou else "#9333ea"
+            bt_ufv_label = "Aberto" if bt_ufv_atuou else "Fechado"
+            bt_ufv_label_color = "#dc2626" if bt_ufv_atuou else "#9333ea"
+
             # Opacidade dos inversores conforme corte
             # Se há corte, mostra que estão "limitados" (semi-transparente no topo)
             opacidade_inv = 1.0
@@ -2317,9 +2325,9 @@ if generation_file and load_file:
 
   <!-- DJ BT UFV -->
   <line x1="170" y1="525" x2="170" y2="555" stroke="#1f2937" stroke-width="2"/>
-  <rect x="130" y="555" width="80" height="28" rx="6" fill="white" stroke="#dc2626" stroke-width="1.8"/>
-  <text x="170" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" font-weight="700" fill="#dc2626">DJ BT - UFV</text>
-  <text x="170" y="579" text-anchor="middle" font-family="Arial" font-size="8" fill="#6b7280">Fechado</text>
+  <rect x="130" y="555" width="80" height="28" rx="6" fill="white" stroke="{bt_ufv_stroke}" stroke-width="1.8"/>
+  <text x="170" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" font-weight="700" fill="{bt_ufv_stroke}">DJ BT - UFV</text>
+  <text x="170" y="579" text-anchor="middle" font-family="Arial" font-size="8" fill="{bt_ufv_label_color}">{bt_ufv_label}</text>
 
   <!-- DJ BT Carga (representação) -->
   <line x1="270" y1="525" x2="270" y2="555" stroke="#1f2937" stroke-width="2"/>
@@ -2362,9 +2370,9 @@ if generation_file and load_file:
   <line x1="535" y1="525" x2="665" y2="525" stroke="#1f2937" stroke-width="2.5"/>
 
   <line x1="550" y1="525" x2="550" y2="555" stroke="#1f2937" stroke-width="2"/>
-  <rect x="510" y="555" width="80" height="28" rx="6" fill="white" stroke="#dc2626" stroke-width="1.8"/>
-  <text x="550" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" font-weight="700" fill="#dc2626">DJ BT - UFV</text>
-  <text x="550" y="579" text-anchor="middle" font-family="Arial" font-size="8" fill="#6b7280">Fechado</text>
+  <rect x="510" y="555" width="80" height="28" rx="6" fill="white" stroke="{bt_ufv_stroke}" stroke-width="1.8"/>
+  <text x="550" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" font-weight="700" fill="{bt_ufv_stroke}">DJ BT - UFV</text>
+  <text x="550" y="579" text-anchor="middle" font-family="Arial" font-size="8" fill="{bt_ufv_label_color}">{bt_ufv_label}</text>
 
   <line x1="650" y1="525" x2="650" y2="555" stroke="#1f2937" stroke-width="2"/>
   <rect x="610" y="555" width="80" height="28" rx="6" fill="white" stroke="#374151" stroke-width="1.2"/>
@@ -2402,9 +2410,9 @@ if generation_file and load_file:
   <line x1="915" y1="525" x2="1045" y2="525" stroke="#1f2937" stroke-width="2.5"/>
 
   <line x1="930" y1="525" x2="930" y2="555" stroke="#1f2937" stroke-width="2"/>
-  <rect x="890" y="555" width="80" height="28" rx="6" fill="white" stroke="#dc2626" stroke-width="1.8"/>
-  <text x="930" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" font-weight="700" fill="#dc2626">DJ BT - UFV</text>
-  <text x="930" y="579" text-anchor="middle" font-family="Arial" font-size="8" fill="#6b7280">Fechado</text>
+  <rect x="890" y="555" width="80" height="28" rx="6" fill="white" stroke="{bt_ufv_stroke}" stroke-width="1.8"/>
+  <text x="930" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" font-weight="700" fill="{bt_ufv_stroke}">DJ BT - UFV</text>
+  <text x="930" y="579" text-anchor="middle" font-family="Arial" font-size="8" fill="{bt_ufv_label_color}">{bt_ufv_label}</text>
 
   <line x1="1030" y1="525" x2="1030" y2="555" stroke="#1f2937" stroke-width="2"/>
   <rect x="990" y="555" width="80" height="28" rx="6" fill="white" stroke="#374151" stroke-width="1.2"/>
