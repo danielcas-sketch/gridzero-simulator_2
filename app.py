@@ -1998,69 +1998,19 @@ if generation_file and load_file:
                 unsafe_allow_html=True
             )
 
-            # -------------------------
-            # Controles de simulação (Etapa 2)
-            # -------------------------
-            if 'sim_time' not in st.session_state:
-                st.session_state['sim_time'] = 0
-            if 'sim_playing' not in st.session_state:
-                st.session_state['sim_playing'] = False
-            if 'sim_scenario' not in st.session_state:
-                st.session_state['sim_scenario'] = 'Nenhum'
-
-            st.markdown('<div style="margin-top:8px;"></div>', unsafe_allow_html=True)
-            sim_col1, sim_col2 = st.columns([1,1])
-            with sim_col1:
-                play = st.checkbox('Play (auto-step)', value=st.session_state['sim_playing'])
-                st.session_state['sim_playing'] = play
-            with sim_col2:
-                if st.button('Step'):
-                    st.session_state['sim_time'] += 1
-                if st.button('Reset'):
-                    st.session_state['sim_time'] = 0
-                    st.session_state['sim_playing'] = False
-
-            # Cenários rápidos
-            scen = st.selectbox('Cenário de simulação', ['Nenhum', 'Falha de Comunicação', 'Exportação Sustentada (Camadas 2 e 3)'], index=0)
-            st.session_state['sim_scenario'] = scen
-
-            # Auto-step (não bloqueante: incrementa por rerun se Play estiver ativo)
-            if st.session_state.get('sim_playing'):
-                st.session_state['sim_time'] += 1
-
             # Estado das camadas de proteção
             st.markdown(
                 '<div class="premissa-group-title" style="margin-top:14px;">🛡️ Camadas de Proteção</div>',
                 unsafe_allow_html=True
             )
 
-            # Camada 0..3: determinar estados baseados no cenário selecionado
-            scenario = st.session_state.get('sim_scenario', 'Nenhum')
-
-            # Default baseado em geração
-            default_c0 = sim_geracao > 0
-
-            if scenario == 'Falha de Comunicação':
-                c0_ativo = False
-                c1_status = 'ATIVO'
-                c2_status = 'standby'
-                c3_status = 'standby'
-            elif scenario == 'Exportação Sustentada (Camadas 2 e 3)':
-                c0_ativo = default_c0
-                c1_status = 'standby'
-                c2_status = 'ATIVO'
-                c3_status = 'ATIVO'
-            else:
-                c0_ativo = default_c0
-                c1_status = 'standby'
-                c2_status = 'standby'
-                c3_status = 'standby'
-
+            # Camada 0: controle DEIF (ativa quando há geração)
+            # Camada 1: ANSI 32 do AGC-150 (standby — só atua em falha de controle)
+            # Camada 2: Relé auxiliar (standby)
+            # Camada 3: 7SR1004 no PMT (standby)
+            c0_ativo = sim_geracao > 0
             c0_cor = "#16a34a" if c0_ativo else "#9ca3af"
             c0_status = "ATIVO" if c0_ativo else "standby"
-            c1_cor = "#16a34a" if c1_status == 'ATIVO' else "#9ca3af"
-            c2_cor = "#16a34a" if c2_status == 'ATIVO' else "#9ca3af"
-            c3_cor = "#16a34a" if c3_status == 'ATIVO' else "#9ca3af"
 
             def camada_row(num, nome, descricao, status, cor):
                 bg_cor = "#f0fdf4" if cor == "#16a34a" else "#f9fafb"
@@ -2086,19 +2036,19 @@ if generation_file and load_file:
             st.markdown(camada_row(
                 "1", "ANSI 32 do AGC-150",
                 "Atua nos disjuntores BT em 2–3 s",
-                c1_status, c1_cor
+                "standby", "#9ca3af"
             ), unsafe_allow_html=True)
 
             st.markdown(camada_row(
                 "2", "Relé auxiliar ANSI 32",
                 "Atua nos disjuntores BT em 5–7 s",
-                c2_status, c2_cor
+                "standby", "#9ca3af"
             ), unsafe_allow_html=True)
 
             st.markdown(camada_row(
                 "3", "Siemens 7SR1004 (MT)",
                 "Abre disjuntor de MT do PMT em 8–10 s",
-                c3_status, c3_cor
+                "standby", "#9ca3af"
             ), unsafe_allow_html=True)
 
         with col_diagrama:
