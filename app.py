@@ -2461,7 +2461,6 @@ if generation_file and load_file:
 
   <!-- AGC → bus de comunicação -->
   <polyline points="720,343 720,830 550,830 550,850" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" fill="none" opacity="0.85"/>
-  <text x="730" y="700" class="label-comm" fill="{cor_agc_ativo}">📡 Fibra óptica DEIF (setpoint)</text>
 
   <!-- Setas de fluxo solar → barramento BT -->
   <line x1="140" y1="615" x2="140" y2="535" stroke="{cor_seta_solar}" stroke-width="{esp_geracao}" marker-start="url(#arrow-solar)" opacity="{0.9 if geracao_efetiva > 0 else 0.2}"/>
