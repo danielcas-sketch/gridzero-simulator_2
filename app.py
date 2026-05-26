@@ -2087,7 +2087,7 @@ if generation_file and load_file:
                 opacidade_inv = max(0.4, pct_geracao)
 
             svg = f"""
-<svg viewBox="0 0 1200 1000" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto; background:#fafbfc; border-radius:14px;">
+<svg viewBox="0 0 1200 1080" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto; background:#fafbfc; border-radius:14px;">
   <defs>
     <marker id="arrow-rede" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="{cor_seta_rede}"/>
@@ -2103,7 +2103,7 @@ if generation_file and load_file:
       .box-sub {{ font: 11px Arial; fill: #6b7280; }}
       .label-fluxo {{ font: 700 11px Arial; }}
       .label-comm {{ font: italic 10px Arial; fill: #6b7280; }}
-      .cabo-comando {{ stroke: #92400e; stroke-width: 3; fill: none; opacity: 0.85; }}
+      .cabo-comando {{ stroke: #92400e; stroke-width: 2.5; fill: none; opacity: 0.9; }}
     </style>
   </defs>
 
@@ -2146,8 +2146,8 @@ if generation_file and load_file:
   <text x="720" y="318" text-anchor="middle" class="box-sub">TCs/TPs + ANSI 32</text>
   <text x="720" y="332" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="{cor_agc_ativo}">CAMADA 0 — {c0_status}</text>
 
-  <!-- Cabo de comando 7SR1004 → DJ-MT (Camada 3 atua no DJ-MT) -->
-  <path d="M 480 285 Q 480 270 555 250" class="cabo-comando"/>
+  <!-- Cabo de comando 7SR1004 → DJ-MT (linhas retas em L) -->
+  <polyline points="480,285 480,275 555,275 555,266" class="cabo-comando"/>
 
   <!-- Saída do PMT vai pro barramento MT -->
   <line x1="600" y1="360" x2="600" y2="395" stroke="{cor_seta_rede if energia_rede > 0 else '#cbd5e1'}" stroke-width="{max(esp_rede, esp_consumo)}" marker-end="url(#arrow-rede)"/>
@@ -2164,47 +2164,45 @@ if generation_file and load_file:
   <text x="220" y="459" text-anchor="middle" class="box-sub">500 kVA — 13,8/0,38 kV</text>
   <text x="220" y="471" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">4 inversores</text>
 
-  <!-- Saída do trafo até barramento BT -->
   <line x1="220" y1="475" x2="220" y2="525" stroke="#1f2937" stroke-width="2"/>
-  <!-- Barramento BT horizontal -->
-  <line x1="160" y1="525" x2="280" y2="525" stroke="#1f2937" stroke-width="2.5"/>
+  <line x1="155" y1="525" x2="285" y2="525" stroke="#1f2937" stroke-width="2.5"/>
 
-  <!-- DJ BT UFV (esquerda) - atua -->
+  <!-- DJ BT UFV -->
   <line x1="170" y1="525" x2="170" y2="555" stroke="#1f2937" stroke-width="2"/>
   <rect x="130" y="555" width="80" height="28" rx="6" fill="white" stroke="#dc2626" stroke-width="1.8"/>
   <text x="170" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" font-weight="700" fill="#dc2626">DJ BT - UFV</text>
   <text x="170" y="579" text-anchor="middle" font-family="Arial" font-size="8" fill="#6b7280">Fechado</text>
 
-  <!-- DJ BT Carga (direita) - representação apenas -->
+  <!-- DJ BT Carga (representação) -->
   <line x1="270" y1="525" x2="270" y2="555" stroke="#1f2937" stroke-width="2"/>
   <rect x="230" y="555" width="80" height="28" rx="6" fill="white" stroke="#374151" stroke-width="1.2"/>
   <text x="270" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" fill="#374151">DJ BT</text>
   <text x="270" y="579" text-anchor="middle" font-family="Arial" font-size="9" font-style="italic" fill="#374151">CARGA</text>
 
-  <!-- Inversores TR-05 (abaixo do DJ BT UFV) -->
-  <line x1="170" y1="583" x2="170" y2="610" stroke="#1f2937" stroke-width="2"/>
-  <rect x="115" y="610" width="110" height="50" rx="6" fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
-  <text x="170" y="628" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
-  <text x="170" y="643" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
-  <text x="170" y="655" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600" fill="#f97316" opacity="{opacidade_inv}">{int(geracao_efetiva * 0.125):,} kW</text>
+  <!-- Inversores TR-05 -->
+  <line x1="170" y1="583" x2="170" y2="615" stroke="#1f2937" stroke-width="2"/>
+  <rect x="105" y="615" width="130" height="60" rx="6" fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <text x="170" y="634" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
+  <text x="170" y="650" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
+  <text x="170" y="666" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#f97316" opacity="{opacidade_inv}">{int(geracao_efetiva * 0.125):,} kW</text>
 
-  <!-- Carga TR-05 (abaixo do DJ BT Carga) -->
-  <line x1="270" y1="583" x2="270" y2="610" stroke="#1f2937" stroke-width="2"/>
-  <rect x="220" y="610" width="100" height="50" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="270" y="633" text-anchor="middle" class="box-titulo" fill="#1d4ed8">🏢 CARGA</text>
-  <text x="270" y="649" text-anchor="middle" class="box-sub">TR-05</text>
+  <!-- Carga TR-05 (deslocada para direita, sem sobreposição) -->
+  <line x1="270" y1="583" x2="270" y2="615" stroke="#1f2937" stroke-width="2"/>
+  <rect x="250" y="615" width="100" height="60" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="300" y="638" text-anchor="middle" class="box-titulo" fill="#1d4ed8">🏢 CARGA</text>
+  <text x="300" y="655" text-anchor="middle" class="box-sub">TR-05</text>
 
   <!-- ASC-150 #1 -->
-  <rect x="115" y="725" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
-  <text x="170" y="741" text-anchor="middle" class="box-titulo">DEIF ASC-150 #1</text>
-  <text x="170" y="755" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
+  <rect x="105" y="755" width="130" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+  <text x="170" y="771" text-anchor="middle" class="box-titulo">DEIF ASC-150 #1</text>
+  <text x="170" y="785" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
   <!-- Modbus ASC#1 ↔ Inversores -->
-  <line x1="170" y1="725" x2="170" y2="660" stroke="{cor_agc_ativo}" stroke-width="1.2" stroke-dasharray="2,2"/>
-  <text x="178" y="700" font-family="Arial" font-size="8" fill="{cor_agc_ativo}">Modbus</text>
+  <line x1="170" y1="755" x2="170" y2="675" stroke="{cor_agc_ativo}" stroke-width="1.2" stroke-dasharray="2,2"/>
+  <text x="178" y="720" font-family="Arial" font-size="8" fill="{cor_agc_ativo}">Modbus</text>
 
-  <!-- CABO DE COMANDO ASC#1 → DJ BT UFV #1 -->
-  <path d="M 115 730 Q 70 700 70 555 Q 70 540 130 555" class="cabo-comando"/>
+  <!-- Cabo de comando ASC#1 → DJ BT-UFV #1 (linhas retas em U) -->
+  <polyline points="105,770 60,770 60,569 130,569" class="cabo-comando"/>
 
   <!-- ============== RAMO 2: TR-07 (centro x=600) ============== -->
   <rect x="530" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5"/>
@@ -2213,7 +2211,7 @@ if generation_file and load_file:
   <text x="600" y="471" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">16 inversores</text>
 
   <line x1="600" y1="475" x2="600" y2="525" stroke="#1f2937" stroke-width="2"/>
-  <line x1="540" y1="525" x2="660" y2="525" stroke="#1f2937" stroke-width="2.5"/>
+  <line x1="535" y1="525" x2="665" y2="525" stroke="#1f2937" stroke-width="2.5"/>
 
   <line x1="550" y1="525" x2="550" y2="555" stroke="#1f2937" stroke-width="2"/>
   <rect x="510" y="555" width="80" height="28" rx="6" fill="white" stroke="#dc2626" stroke-width="1.8"/>
@@ -2225,26 +2223,26 @@ if generation_file and load_file:
   <text x="650" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" fill="#374151">DJ BT</text>
   <text x="650" y="579" text-anchor="middle" font-family="Arial" font-size="9" font-style="italic" fill="#374151">CARGA</text>
 
-  <line x1="550" y1="583" x2="550" y2="610" stroke="#1f2937" stroke-width="2"/>
-  <rect x="495" y="610" width="110" height="50" rx="6" fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
-  <text x="550" y="628" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 16× SE100K</text>
-  <text x="550" y="643" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
-  <text x="550" y="655" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600" fill="#f97316" opacity="{opacidade_inv}">{int(geracao_efetiva * 0.667):,} kW</text>
+  <line x1="550" y1="583" x2="550" y2="615" stroke="#1f2937" stroke-width="2"/>
+  <rect x="485" y="615" width="130" height="60" rx="6" fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <text x="550" y="634" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 16× SE100K</text>
+  <text x="550" y="650" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
+  <text x="550" y="666" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#f97316" opacity="{opacidade_inv}">{int(geracao_efetiva * 0.667):,} kW</text>
 
-  <line x1="650" y1="583" x2="650" y2="610" stroke="#1f2937" stroke-width="2"/>
-  <rect x="600" y="610" width="100" height="50" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="650" y="633" text-anchor="middle" class="box-titulo" fill="#1d4ed8">🏢 CARGA</text>
-  <text x="650" y="649" text-anchor="middle" class="box-sub">TR-07</text>
+  <line x1="650" y1="583" x2="650" y2="615" stroke="#1f2937" stroke-width="2"/>
+  <rect x="630" y="615" width="100" height="60" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="680" y="638" text-anchor="middle" class="box-titulo" fill="#1d4ed8">🏢 CARGA</text>
+  <text x="680" y="655" text-anchor="middle" class="box-sub">TR-07</text>
 
-  <rect x="495" y="725" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
-  <text x="550" y="741" text-anchor="middle" class="box-titulo">DEIF ASC-150 #2</text>
-  <text x="550" y="755" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
+  <rect x="485" y="755" width="130" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+  <text x="550" y="771" text-anchor="middle" class="box-titulo">DEIF ASC-150 #2</text>
+  <text x="550" y="785" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
-  <line x1="550" y1="725" x2="550" y2="660" stroke="{cor_agc_ativo}" stroke-width="1.2" stroke-dasharray="2,2"/>
-  <text x="558" y="700" font-family="Arial" font-size="8" fill="{cor_agc_ativo}">Modbus</text>
+  <line x1="550" y1="755" x2="550" y2="675" stroke="{cor_agc_ativo}" stroke-width="1.2" stroke-dasharray="2,2"/>
+  <text x="558" y="720" font-family="Arial" font-size="8" fill="{cor_agc_ativo}">Modbus</text>
 
-  <!-- CABO DE COMANDO ASC#2 → DJ BT UFV #2 -->
-  <path d="M 495 730 Q 460 700 460 555 Q 460 540 510 555" class="cabo-comando"/>
+  <!-- Cabo de comando ASC#2 → DJ BT-UFV #2 -->
+  <polyline points="485,770 450,770 450,569 510,569" class="cabo-comando"/>
 
   <!-- ============== RAMO 3: TR-08 (centro x=980) ============== -->
   <rect x="910" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5"/>
@@ -2253,7 +2251,7 @@ if generation_file and load_file:
   <text x="980" y="471" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">4 inversores</text>
 
   <line x1="980" y1="475" x2="980" y2="525" stroke="#1f2937" stroke-width="2"/>
-  <line x1="920" y1="525" x2="1040" y2="525" stroke="#1f2937" stroke-width="2.5"/>
+  <line x1="915" y1="525" x2="1045" y2="525" stroke="#1f2937" stroke-width="2.5"/>
 
   <line x1="930" y1="525" x2="930" y2="555" stroke="#1f2937" stroke-width="2"/>
   <rect x="890" y="555" width="80" height="28" rx="6" fill="white" stroke="#dc2626" stroke-width="1.8"/>
@@ -2265,58 +2263,57 @@ if generation_file and load_file:
   <text x="1030" y="568" text-anchor="middle" font-family="Arial" font-size="10" font-style="italic" fill="#374151">DJ BT</text>
   <text x="1030" y="579" text-anchor="middle" font-family="Arial" font-size="9" font-style="italic" fill="#374151">CARGA</text>
 
-  <line x1="930" y1="583" x2="930" y2="610" stroke="#1f2937" stroke-width="2"/>
-  <rect x="875" y="610" width="110" height="50" rx="6" fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
-  <text x="930" y="628" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
-  <text x="930" y="643" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
-  <text x="930" y="655" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600" fill="#f97316" opacity="{opacidade_inv}">{int(geracao_efetiva * 0.208):,} kW</text>
+  <line x1="930" y1="583" x2="930" y2="615" stroke="#1f2937" stroke-width="2"/>
+  <rect x="865" y="615" width="130" height="60" rx="6" fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <text x="930" y="634" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
+  <text x="930" y="650" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
+  <text x="930" y="666" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#f97316" opacity="{opacidade_inv}">{int(geracao_efetiva * 0.208):,} kW</text>
 
-  <line x1="1030" y1="583" x2="1030" y2="610" stroke="#1f2937" stroke-width="2"/>
-  <rect x="980" y="610" width="100" height="50" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="1030" y="633" text-anchor="middle" class="box-titulo" fill="#1d4ed8">🏢 CARGA</text>
-  <text x="1030" y="649" text-anchor="middle" class="box-sub">TR-08</text>
+  <line x1="1030" y1="583" x2="1030" y2="615" stroke="#1f2937" stroke-width="2"/>
+  <rect x="1010" y="615" width="100" height="60" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="1060" y="638" text-anchor="middle" class="box-titulo" fill="#1d4ed8">🏢 CARGA</text>
+  <text x="1060" y="655" text-anchor="middle" class="box-sub">TR-08</text>
 
-  <rect x="875" y="725" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
-  <text x="930" y="741" text-anchor="middle" class="box-titulo">DEIF ASC-150 #3</text>
-  <text x="930" y="755" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
+  <rect x="865" y="755" width="130" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+  <text x="930" y="771" text-anchor="middle" class="box-titulo">DEIF ASC-150 #3</text>
+  <text x="930" y="785" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
-  <line x1="930" y1="725" x2="930" y2="660" stroke="{cor_agc_ativo}" stroke-width="1.2" stroke-dasharray="2,2"/>
-  <text x="938" y="700" font-family="Arial" font-size="8" fill="{cor_agc_ativo}">Modbus</text>
+  <line x1="930" y1="755" x2="930" y2="675" stroke="{cor_agc_ativo}" stroke-width="1.2" stroke-dasharray="2,2"/>
+  <text x="938" y="720" font-family="Arial" font-size="8" fill="{cor_agc_ativo}">Modbus</text>
 
-  <!-- CABO DE COMANDO ASC#3 → DJ BT UFV #3 -->
-  <path d="M 875 730 Q 840 700 840 555 Q 840 540 890 555" class="cabo-comando"/>
+  <!-- Cabo de comando ASC#3 → DJ BT-UFV #3 -->
+  <polyline points="865,770 830,770 830,569 890,569" class="cabo-comando"/>
 
-  <!-- ============== COMUNICAÇÃO DEIF (fibra) ============== -->
-  <!-- Bus inferior conectando os 3 ASCs -->
-  <line x1="170" y1="800" x2="930" y2="800" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
-  <line x1="170" y1="767" x2="170" y2="800" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
-  <line x1="550" y1="767" x2="550" y2="800" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
-  <line x1="930" y1="767" x2="930" y2="800" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
+  <!-- COMUNICAÇÃO DEIF (fibra) -->
+  <line x1="170" y1="850" x2="930" y2="850" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
+  <line x1="170" y1="797" x2="170" y2="850" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
+  <line x1="550" y1="797" x2="550" y2="850" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
+  <line x1="930" y1="797" x2="930" y2="850" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" opacity="0.85"/>
 
   <!-- AGC → bus de comunicação -->
-  <path d="M 720 343 Q 720 700 550 800" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" fill="none" opacity="0.85"/>
+  <polyline points="720,343 720,830 550,830 550,850" stroke="{cor_agc_ativo}" stroke-width="1.8" stroke-dasharray="4,3" fill="none" opacity="0.85"/>
   <text x="730" y="700" class="label-comm" fill="{cor_agc_ativo}">📡 Fibra óptica DEIF (setpoint)</text>
 
   <!-- Setas de fluxo solar → barramento BT -->
-  <line x1="150" y1="610" x2="150" y2="535" stroke="{cor_seta_solar}" stroke-width="{esp_geracao}" marker-start="url(#arrow-solar)" opacity="{0.9 if geracao_efetiva > 0 else 0.2}"/>
-  <line x1="530" y1="610" x2="530" y2="535" stroke="{cor_seta_solar}" stroke-width="{esp_geracao}" marker-start="url(#arrow-solar)" opacity="{0.9 if geracao_efetiva > 0 else 0.2}"/>
-  <line x1="910" y1="610" x2="910" y2="535" stroke="{cor_seta_solar}" stroke-width="{esp_geracao}" marker-start="url(#arrow-solar)" opacity="{0.9 if geracao_efetiva > 0 else 0.2}"/>
+  <line x1="140" y1="615" x2="140" y2="535" stroke="{cor_seta_solar}" stroke-width="{esp_geracao}" marker-start="url(#arrow-solar)" opacity="{0.9 if geracao_efetiva > 0 else 0.2}"/>
+  <line x1="520" y1="615" x2="520" y2="535" stroke="{cor_seta_solar}" stroke-width="{esp_geracao}" marker-start="url(#arrow-solar)" opacity="{0.9 if geracao_efetiva > 0 else 0.2}"/>
+  <line x1="900" y1="615" x2="900" y2="535" stroke="{cor_seta_solar}" stroke-width="{esp_geracao}" marker-start="url(#arrow-solar)" opacity="{0.9 if geracao_efetiva > 0 else 0.2}"/>
 
   <!-- LEGENDA -->
-  <g transform="translate(40, 860)">
+  <g transform="translate(40, 920)">
     <rect x="0" y="0" width="14" height="3" fill="#9333ea"/>
     <text x="20" y="4" font-family="Arial" font-size="10" fill="#374151">Rede Light → Carga</text>
     <rect x="180" y="0" width="14" height="3" fill="#16a34a"/>
     <text x="200" y="4" font-family="Arial" font-size="10" fill="#374151">Solar → Carga</text>
     <line x1="320" y1="2" x2="334" y2="2" stroke="{cor_agc_ativo}" stroke-width="2" stroke-dasharray="3,2"/>
     <text x="342" y="4" font-family="Arial" font-size="10" fill="#374151">Comunicação DEIF</text>
-    <line x1="490" y1="2" x2="504" y2="2" stroke="#92400e" stroke-width="3"/>
+    <line x1="490" y1="2" x2="504" y2="2" stroke="#92400e" stroke-width="2.5"/>
     <text x="512" y="4" font-family="Arial" font-size="10" fill="#374151">Cabo de comando (trip)</text>
     <rect x="700" y="-3" width="10" height="10" rx="2" fill="white" stroke="#dc2626" stroke-width="1"/>
     <text x="715" y="4" font-family="Arial" font-size="10" fill="#374151">Disjuntor</text>
   </g>
 
-  {f'<g><rect x="480" y="890" width="240" height="26" rx="13" fill="white" stroke="#f97316" stroke-width="2"/><text x="600" y="908" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#c2410c">⚠️ Corte ativo: {corte_kw:,} kW desperdiçados</text></g>' if corte_kw > 0 else ''}
+  {f'<g><rect x="480" y="970" width="240" height="26" rx="13" fill="white" stroke="#f97316" stroke-width="2"/><text x="600" y="988" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#c2410c">⚠️ Corte ativo: {corte_kw:,} kW desperdiçados</text></g>' if corte_kw > 0 else ''}
 </svg>
             """
 
@@ -2337,7 +2334,7 @@ if generation_file and load_file:
 </body>
 </html>
 """
-            components.html(html_wrapper, height=1000, scrolling=False)
+            components.html(html_wrapper, height=1080, scrolling=False)
 
         # Cards informativos abaixo do diagrama
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
