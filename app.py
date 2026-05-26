@@ -315,6 +315,8 @@ section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"],
 [data-testid="stDateInput"] label p {
     color: #1f2937 !important;
 }
+[data-testid="stSlider"] label,
+[data-testid="stSlider"] label p,
 section[data-testid="stSlider"] label,
 section[data-testid="stSlider"] label p {
     color: #000000 !important;
