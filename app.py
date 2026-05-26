@@ -2087,7 +2087,7 @@ if generation_file and load_file:
                 opacidade_inv = max(0.4, pct_geracao)
 
             svg = f"""
-<svg viewBox="0 0 700 760" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="background:#fafbfc; border-radius:14px; display:block; overflow:visible;">
+<svg viewBox="0 0 700 800" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="background:#fafbfc; border-radius:14px; display:block; overflow:visible;">
   <defs>
     <!-- Markers para setas -->
     <marker id="arrow-rede" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -2406,7 +2406,7 @@ if generation_file and load_file:
 </body>
 </html>
 """
-            components.html(html_wrapper, height=850, scrolling=False)
+            components.html(html_wrapper, height=920, scrolling=False)
 
         # Cards informativos abaixo do diagrama
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
