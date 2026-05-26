@@ -2087,7 +2087,7 @@ if generation_file and load_file:
                 opacidade_inv = max(0.4, pct_geracao)
 
             svg = f"""
-<svg viewBox="0 0 700 760" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto; background:#fafbfc; border-radius:14px;">
+<svg viewBox="0 0 700 760" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="background:#fafbfc; border-radius:14px; display:block; overflow:visible;">
   <defs>
     <!-- Markers para setas -->
     <marker id="arrow-rede" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -2372,22 +2372,41 @@ if generation_file and load_file:
 
             # Renderiza o SVG via components.html para evitar que o markdown
             # interprete linhas indentadas como bloco de código.
-            # O wrapper HTML aplica um padding leve e remove margins do iframe.
+            # O wrapper HTML garante responsividade e dimensionamento correto.
             html_wrapper = f"""
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body {{ margin: 0; padding: 0; background: transparent; }}
-  svg {{ display: block; width: 100%; height: auto; }}
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  html, body {{ width: 100%; height: 100%; margin: 0; padding: 0; background: transparent; }}
+  .svg-container {{ 
+    width: 100%; 
+    height: auto; 
+    display: flex; 
+    align-items: stretch; 
+    justify-content: center;
+    padding: 8px;
+    overflow: visible;
+  }}
+  svg {{ 
+    max-width: 100%; 
+    height: auto; 
+    display: block; 
+    overflow: visible;
+  }}
 </style>
 </head>
 <body>
+<div class="svg-container">
 {svg}
+</div>
 </body>
 </html>
 """
-            components.html(html_wrapper, height=820, scrolling=False)
+            components.html(html_wrapper, height=850, scrolling=False)
 
         # Cards informativos abaixo do diagrama
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
