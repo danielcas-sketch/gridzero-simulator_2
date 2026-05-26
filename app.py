@@ -2066,48 +2066,62 @@ if generation_file and load_file:
                 2: st.session_state.sim_falha_c2,
                 3: st.session_state.sim_falha_c3,
             }
+            tempos_atuacao = {1: 3, 2: 6, 3: 10}
 
             def estado_camada(num, tempo_atuacao):
-                """Retorna (status, cor, tempo_restante, mostrar_timer).
-                Lógica em cascata: cada camada só "conta" se todas as anteriores falharam.
-                Se chega ao seu tempo: se marcada para falhar, vira FALHA; senão ATUOU (ciclo para).
+                """Retorna (status, cor, tempo_restante, mostrar_timer, congelado).
+                Quando ciclo inicia (C0 falha), TODAS as camadas começam a contar simultaneamente.
+                A primeira camada não-marcada (que atua) congela os timers das seguintes
+                no tempo exato em que ela atuou.
                 """
                 if not ciclo_iniciado:
                     if num == 0:
                         return ("ATIVO" if c0_ativo else "standby",
-                                "#16a34a" if c0_ativo else "#9ca3af", None, False)
-                    return ("standby", "#9ca3af", None, False)
+                                "#16a34a" if c0_ativo else "#9ca3af", None, False, False)
+                    return ("standby", "#9ca3af", None, False, False)
 
-                # Camada 0 sempre falha quando o ciclo é iniciado
                 if num == 0:
-                    return ("⚠️ FALHA", "#dc2626", None, False)
+                    return ("⚠️ FALHA", "#dc2626", None, False, False)
 
-                # Para camadas 1, 2, 3: verifica se todas as anteriores falharam
-                anteriores_falharam = all(
-                    falhas_marcadas.get(n, False) for n in range(1, num)
-                )
-                if not anteriores_falharam:
-                    # Alguma anterior atuou e parou o ciclo — esta nem chega a contar
-                    return ("standby", "#9ca3af", None, False)
+                # Descobrir a primeira camada não-marcada que já atuou
+                camada_interrompeu = None
+                tempo_interrupcao = None
+                for n in (1, 2, 3):
+                    if not falhas_marcadas[n] and tempo_simulado >= tempos_atuacao[n]:
+                        camada_interrompeu = n
+                        tempo_interrupcao = tempos_atuacao[n]
+                        break
 
-                # Esta camada está em contagem (ou já atuou)
+                # Se esta camada já atingiu seu tempo de atuação
                 if tempo_simulado >= tempo_atuacao:
+                    # Se foi interrompida por camada anterior
+                    if camada_interrompeu is not None and camada_interrompeu < num:
+                        return ("⏸ interrompida", "#6b7280", tempo_interrupcao, True, True)
+                    # Esta camada atuou ou falhou no seu próprio tempo
                     if falhas_marcadas[num]:
-                        return ("⚠️ FALHA", "#dc2626", 0, True)
-                    else:
-                        return ("⚡ ATUOU", "#16a34a", 0, True)
-                else:
-                    restante = tempo_atuacao - tempo_simulado
-                    return ("⏱ contando", "#ca8a04", restante, True)
+                        return ("⚠️ FALHA", "#dc2626", 0, True, False)
+                    return ("⚡ ATUOU", "#16a34a", 0, True, False)
 
-            def camada_row_v2(num, nome, descricao, status, cor, tempo_restante, mostrar_timer):
+                # Ainda contando
+                if camada_interrompeu is not None and camada_interrompeu < num:
+                    return ("⏸ interrompida", "#6b7280", tempo_interrupcao, True, True)
+
+                restante = max(0, tempo_atuacao - tempo_simulado)
+                return ("⏱ contando", "#ca8a04", restante, True, False)
+
+            def camada_row_v2(num, nome, descricao, status, cor, tempo_restante, mostrar_timer, congelado):
                 bg_cor = "#f0fdf4" if cor == "#16a34a" else (
                     "#fef2f2" if cor == "#dc2626" else (
-                        "#fefce8" if cor == "#ca8a04" else "#f9fafb"
+                        "#fefce8" if cor == "#ca8a04" else (
+                            "#f3f4f6" if cor == "#6b7280" else "#f9fafb"
+                        )
                     )
                 )
                 if mostrar_timer:
-                    if tempo_restante == 0:
+                    if congelado:
+                        # Timer congelado em cinza
+                        timer_html = f'<span style="font-size:14px; font-weight:700; color:#6b7280;">{tempo_restante:04.1f}s</span>'
+                    elif tempo_restante == 0:
                         timer_html = f'<span style="font-size:14px; font-weight:700; color:{cor};">00.0s</span>'
                     else:
                         timer_html = f'<span style="font-size:14px; font-weight:700; color:#ca8a04;">{tempo_restante:04.1f}s</span>'
@@ -2125,7 +2139,7 @@ if generation_file and load_file:
                     f'<div style="background:white; border:1px solid #e5e7eb; border-radius:4px; '
                     f'padding:2px 6px; min-width:54px; text-align:center;">{timer_html}</div>'
                     f'<span style="font-size:10px; font-weight:700; color:{cor}; '
-                    f'letter-spacing:0.05em; min-width:75px; text-align:right;">{status}</span>'
+                    f'letter-spacing:0.05em; min-width:90px; text-align:right;">{status}</span>'
                     f'</div>'
                     f'<div style="font-size:10px; color:#6b7280; margin-top:2px; line-height:1.3;">{descricao}</div>'
                     f'</div>'
@@ -2133,9 +2147,9 @@ if generation_file and load_file:
 
             # Renderizar cada camada
             for num, nome, descricao, t_atuacao in camadas_config:
-                status, cor, t_rest, mostrar_timer = estado_camada(num, t_atuacao)
+                status, cor, t_rest, mostrar_timer, congelado = estado_camada(num, t_atuacao)
                 st.markdown(
-                    camada_row_v2(num, nome, descricao, status, cor, t_rest, mostrar_timer),
+                    camada_row_v2(num, nome, descricao, status, cor, t_rest, mostrar_timer, congelado),
                     unsafe_allow_html=True
                 )
                 # Camadas 1, 2, 3: checkbox para escolher se vai falhar
@@ -2561,27 +2575,26 @@ if generation_file and load_file:
 
         # Auto-refresh enquanto o ciclo de falha está em andamento
         if st.session_state.sim_falha_iniciada:
-            # Camadas marcadas como falha encadeiam o ciclo até onde houver checkbox
             tempos_atuacao = {1: 3, 2: 6, 3: 10}
             falhas_marcadas_dict = {
                 1: st.session_state.sim_falha_c1,
                 2: st.session_state.sim_falha_c2,
                 3: st.session_state.sim_falha_c3,
             }
-            # Última camada que vai chegar a contar (todas as anteriores precisam estar marcadas)
-            ultima_camada_ativa = None
+            # Tempo limite: primeira camada não-marcada (que atua e para o ciclo)
+            # ou tempo da C3 se todas estão marcadas
+            tempo_limite = None
             for n in (1, 2, 3):
-                anteriores_marcadas = all(falhas_marcadas_dict[k] for k in range(1, n))
-                if anteriores_marcadas:
-                    ultima_camada_ativa = n
-                else:
+                if not falhas_marcadas_dict[n]:
+                    tempo_limite = tempos_atuacao[n]
                     break
-            if ultima_camada_ativa is not None:
-                tempo_max = tempos_atuacao[ultima_camada_ativa]
-                tempo_decorrido = (time.time() - st.session_state.sim_falha_ts) / st.session_state.sim_speed
-                if tempo_decorrido < tempo_max + 1:
-                    time.sleep(0.15)
-                    st.rerun()
+            if tempo_limite is None:
+                tempo_limite = tempos_atuacao[3]
+
+            tempo_decorrido = (time.time() - st.session_state.sim_falha_ts) / st.session_state.sim_speed
+            if tempo_decorrido < tempo_limite + 1:
+                time.sleep(0.15)
+                st.rerun()
 
     # =====================================================
     # AUTO PLAY — somente no modo Replay
