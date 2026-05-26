@@ -2087,7 +2087,7 @@ if generation_file and load_file:
                 opacidade_inv = max(0.4, pct_geracao)
 
             svg = f"""
-<svg viewBox="0 0 700 800" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="background:#fafbfc; border-radius:14px; display:block; overflow:visible;">
+<svg viewBox="0 0 700 760" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto; background:#fafbfc; border-radius:14px;">
   <defs>
     <!-- Markers para setas -->
     <marker id="arrow-rede" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -2109,28 +2109,28 @@ if generation_file and load_file:
       <stop offset="100%" stop-color="#f59e0b"/>
     </radialGradient>
 
-        <!-- Estilos (fontes reduzidas em ~50%) -->
-        <style>
-            .box-titulo {{ font: 600 6px Arial; fill: #1f2937; }}
-            .box-sub {{ font: 6px Arial; fill: #6b7280; }}
-            .label-fluxo {{ font: 700 6px Arial; }}
-            .label-comm {{ font: italic 5px Arial; fill: #6b7280; }}
-            .equip-box {{ stroke-width: 1.5; }}
-        </style>
+    <!-- Estilos -->
+    <style>
+      .box-titulo {{ font: 600 12px Arial; fill: #1f2937; }}
+      .box-sub {{ font: 11px Arial; fill: #6b7280; }}
+      .label-fluxo {{ font: 700 11px Arial; }}
+      .label-comm {{ font: italic 10px Arial; fill: #6b7280; }}
+      .equip-box {{ stroke-width: 1.5; }}
+    </style>
   </defs>
 
   <!-- ============================================== -->
   <!-- TÍTULO -->
   <!-- ============================================== -->
-    <text x="350" y="22" text-anchor="middle" font-family="Arial" font-size="7" font-weight="700" fill="#1f2937">
+  <text x="350" y="22" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#1f2937">
     Arquitetura GridZero — Prologis Dutra II
   </text>
 
   <!-- ============================================== -->
   <!-- 1. REDE LIGHT (topo) -->
   <!-- ============================================== -->
-    <g>
-        <rect x="300" y="46" width="100" height="28" rx="8" fill="#eff6ff" stroke="#2563eb" class="equip-box"/>
+  <g>
+    <rect x="270" y="40" width="160" height="40" rx="8" fill="#eff6ff" stroke="#2563eb" class="equip-box"/>
     <text x="350" y="58" text-anchor="middle" class="box-titulo">⚡ REDE LIGHT</text>
     <text x="350" y="73" text-anchor="middle" class="box-sub">13,8 kV — 60 Hz</text>
   </g>
@@ -2147,7 +2147,7 @@ if generation_file and load_file:
   <!-- 2. CABINE PRIMÁRIA (Relé 7SR1002) -->
   <!-- ============================================== -->
   <g>
-    <rect x="280" y="122" width="140" height="32" rx="8" fill="#ffffff" stroke="#374151" class="equip-box"/>
+    <rect x="245" y="115" width="210" height="48" rx="8" fill="#ffffff" stroke="#374151" class="equip-box"/>
     <text x="350" y="133" text-anchor="middle" class="box-titulo">🏢 Cabine Primária Light</text>
     <text x="350" y="150" text-anchor="middle" class="box-sub">
       Relé Siemens 7SR1002 (50/51/50N/51N)
@@ -2165,33 +2165,33 @@ if generation_file and load_file:
   <g>
     <rect x="120" y="200" width="460" height="160" rx="10"
           fill="#fefce8" stroke="#ca8a04" stroke-width="2" stroke-dasharray="4,3"/>
-    <text x="350" y="220" text-anchor="middle" font-family="Arial" font-size="7" font-weight="700" fill="#854d0e">
+    <text x="350" y="220" text-anchor="middle" font-family="Arial" font-size="13" font-weight="700" fill="#854d0e">
       🏭 PMT-02-G200 (Sala de PMT — Mercado Livre)
     </text>
 
     <!-- Disjuntor MT (geral) -->
-    <rect x="326" y="240" width="58" height="20" rx="6" fill="white" stroke="#dc2626" stroke-width="1.5"/>
-    <text x="350" y="248" text-anchor="middle" font-family="Arial" font-size="5" font-weight="700" fill="#dc2626">
+    <rect x="305" y="234" width="90" height="32" rx="6" fill="white" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="350" y="248" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#dc2626">
       DJ-MT 13,8 kV
     </text>
-    <text x="350" y="260" text-anchor="middle" font-family="Arial" font-size="5" fill="#6b7280">
+    <text x="350" y="260" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">
       Fechado
     </text>
 
     <!-- Relé 7SR1004 (Camada 3) -->
-    <rect x="185" y="296" width="120" height="36" rx="8" fill="white" stroke="#9ca3af" stroke-width="1.5"/>
+    <rect x="140" y="285" width="180" height="58" rx="8" fill="white" stroke="#9ca3af" stroke-width="1.5"/>
     <text x="230" y="302" text-anchor="middle" class="box-titulo">⚙️ Relé Siemens 7SR1004</text>
     <text x="230" y="318" text-anchor="middle" class="box-sub">ANSI 32 + 67</text>
-    <text x="230" y="332" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600" fill="#9ca3af">
+    <text x="230" y="332" text-anchor="middle" font-family="Arial" font-size="10" font-weight="600" fill="#9ca3af">
       CAMADA 3 — standby
     </text>
 
     <!-- AGC-150 MAINS (cérebro) -->
-                <rect x="405" y="296" width="120" height="36" rx="8" fill="white"
-                    stroke="{cor_agc_ativo}" stroke-width="2"/>
+    <rect x="380" y="285" width="180" height="58" rx="8" fill="white"
+          stroke="{cor_agc_ativo}" stroke-width="2"/>
     <text x="470" y="302" text-anchor="middle" class="box-titulo">🧠 DEIF AGC-150 MAINS</text>
     <text x="470" y="318" text-anchor="middle" class="box-sub">TCs/TPs + ANSI 32</text>
-    <text x="470" y="332" text-anchor="middle" font-family="Arial" font-size="5" font-weight="700" fill="{cor_agc_ativo}">
+    <text x="470" y="332" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="{cor_agc_ativo}">
       CAMADA 0 — {c0_status}
     </text>
   </g>
@@ -2208,33 +2208,33 @@ if generation_file and load_file:
   <!-- ============================================== -->
   <!-- 4. BARRAMENTO + 3 RAMOS DE TRANSFORMADORES -->
   <!-- ============================================== -->
-    <line x1="120" y1="395" x2="580" y2="395" stroke="#1f2937" stroke-width="3"/>
+  <line x1="120" y1="395" x2="580" y2="395" stroke="#1f2937" stroke-width="3"/>
   <line x1="170" y1="395" x2="170" y2="420" stroke="#1f2937" stroke-width="2"/>
   <line x1="350" y1="395" x2="350" y2="420" stroke="#1f2937" stroke-width="2"/>
   <line x1="530" y1="395" x2="530" y2="420" stroke="#1f2937" stroke-width="2"/>
 
   <!-- TR-05-G200 -->
-    <g>
-        <rect x="120" y="432" width="90" height="32" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
+  <g>
+    <rect x="100" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
     <text x="170" y="443" text-anchor="middle" class="box-titulo">TR-05-G200</text>
     <text x="170" y="459" text-anchor="middle" class="box-sub">500 kVA — 13,8/0,38 kV</text>
-    <text x="170" y="471" text-anchor="middle" font-family="Arial" font-size="5" fill="#6b7280">4 inversores</text>
+    <text x="170" y="471" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">4 inversores</text>
   </g>
 
   <!-- TR-07-CAG (o grande do meio) -->
-    <g>
-        <rect x="300" y="432" width="90" height="32" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
+  <g>
+    <rect x="280" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
     <text x="350" y="443" text-anchor="middle" class="box-titulo">TR-07-CAG</text>
     <text x="350" y="459" text-anchor="middle" class="box-sub">2.000 kVA — 13,8/0,38 kV</text>
-    <text x="350" y="471" text-anchor="middle" font-family="Arial" font-size="5" fill="#6b7280">16 inversores</text>
+    <text x="350" y="471" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">16 inversores</text>
   </g>
 
   <!-- TR-08-G200 -->
-    <g>
-        <rect x="480" y="432" width="90" height="32" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
+  <g>
+    <rect x="460" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
     <text x="530" y="443" text-anchor="middle" class="box-titulo">TR-08-G200</text>
     <text x="530" y="459" text-anchor="middle" class="box-sub">750 kVA — 13,8/0,38 kV</text>
-    <text x="530" y="471" text-anchor="middle" font-family="Arial" font-size="5" fill="#6b7280">4 inversores</text>
+    <text x="530" y="471" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">4 inversores</text>
   </g>
 
   <!-- ============================================== -->
@@ -2242,20 +2242,20 @@ if generation_file and load_file:
   <!-- ============================================== -->
 
   <!-- ASC #1 -->
-    <line x1="170" y1="475" x2="170" y2="500" stroke="#1f2937" stroke-width="2"/>
-    <rect x="138" y="506" width="72" height="26" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+  <line x1="170" y1="475" x2="170" y2="500" stroke="#1f2937" stroke-width="2"/>
+  <rect x="115" y="500" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
   <text x="170" y="516" text-anchor="middle" class="box-titulo">DEIF ASC-150 #1</text>
   <text x="170" y="530" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
   <!-- ASC #2 -->
-    <line x1="350" y1="475" x2="350" y2="500" stroke="#1f2937" stroke-width="2"/>
-    <rect x="318" y="506" width="72" height="26" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+  <line x1="350" y1="475" x2="350" y2="500" stroke="#1f2937" stroke-width="2"/>
+  <rect x="295" y="500" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
   <text x="350" y="516" text-anchor="middle" class="box-titulo">DEIF ASC-150 #2</text>
   <text x="350" y="530" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
   <!-- ASC #3 -->
-    <line x1="530" y1="475" x2="530" y2="500" stroke="#1f2937" stroke-width="2"/>
-    <rect x="498" y="506" width="72" height="26" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+  <line x1="530" y1="475" x2="530" y2="500" stroke="#1f2937" stroke-width="2"/>
+  <rect x="475" y="500" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
   <text x="530" y="516" text-anchor="middle" class="box-titulo">DEIF ASC-150 #3</text>
   <text x="530" y="530" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
@@ -2280,42 +2280,42 @@ if generation_file and load_file:
 
   <!-- Inversores TR-05 (4 unidades) -->
   <line x1="170" y1="542" x2="170" y2="565" stroke="#1f2937" stroke-width="2"/>
-    <rect x="146" y="569" width="44" height="9" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
-    <text x="170" y="575" text-anchor="middle" font-family="Arial" font-size="4" font-weight="600" fill="#dc2626">DJ BT</text>
+  <rect x="135" y="565" width="70" height="14" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
+  <text x="170" y="575" text-anchor="middle" font-family="Arial" font-size="8" font-weight="600" fill="#dc2626">DJ BT</text>
   <line x1="170" y1="579" x2="170" y2="595" stroke="#1f2937" stroke-width="2"/>
-  <rect x="128" y="600" width="72" height="32" rx="6"
-      fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <rect x="115" y="595" width="110" height="50" rx="6"
+        fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
   <text x="170" y="613" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
   <text x="170" y="628" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
-    <text x="170" y="640" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600"
+  <text x="170" y="640" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600"
         fill="#f97316" opacity="{opacidade_inv}">
     {int(geracao_efetiva * 0.125):,} kW
   </text>
 
   <!-- Inversores TR-07 (16 unidades — o maior grupo) -->
   <line x1="350" y1="542" x2="350" y2="565" stroke="#1f2937" stroke-width="2"/>
-    <rect x="326" y="569" width="44" height="9" rx="3" fill="white" stroke="#dc2626" stroke-width="#1.2"/>
-    <text x="350" y="575" text-anchor="middle" font-family="Arial" font-size="4" font-weight="600" fill="#dc2626">DJ BT</text>
+  <rect x="315" y="565" width="70" height="14" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
+  <text x="350" y="575" text-anchor="middle" font-family="Arial" font-size="8" font-weight="600" fill="#dc2626">DJ BT</text>
   <line x1="350" y1="579" x2="350" y2="595" stroke="#1f2937" stroke-width="2"/>
-  <rect x="308" y="600" width="72" height="32" rx="6"
-      fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <rect x="295" y="595" width="110" height="50" rx="6"
+        fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
   <text x="350" y="613" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 16× SE100K</text>
   <text x="350" y="628" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
-    <text x="350" y="640" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600"
+  <text x="350" y="640" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600"
         fill="#f97316" opacity="{opacidade_inv}">
     {int(geracao_efetiva * 0.667):,} kW
   </text>
 
   <!-- Inversores TR-08 (4 unidades) -->
   <line x1="530" y1="542" x2="530" y2="565" stroke="#1f2937" stroke-width="2"/>
-    <rect x="506" y="569" width="44" height="9" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
-    <text x="530" y="575" text-anchor="middle" font-family="Arial" font-size="4" font-weight="600" fill="#dc2626">DJ BT</text>
+  <rect x="495" y="565" width="70" height="14" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
+  <text x="530" y="575" text-anchor="middle" font-family="Arial" font-size="8" font-weight="600" fill="#dc2626">DJ BT</text>
   <line x1="530" y1="579" x2="530" y2="595" stroke="#1f2937" stroke-width="2"/>
-  <rect x="488" y="600" width="72" height="32" rx="6"
-      fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <rect x="475" y="595" width="110" height="50" rx="6"
+        fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
   <text x="530" y="613" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
   <text x="530" y="628" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
-    <text x="530" y="640" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600"
+  <text x="530" y="640" text-anchor="middle" font-family="Arial" font-size="9" font-weight="600"
         fill="#f97316" opacity="{opacidade_inv}">
     {int(geracao_efetiva * 0.208):,} kW
   </text>
@@ -2328,7 +2328,7 @@ if generation_file and load_file:
   <!-- ============================================== -->
   <rect x="50" y="685" width="600" height="50" rx="10"
         fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
-    <text x="350" y="708" text-anchor="middle" font-family="Arial" font-size="7" font-weight="700" fill="#1d4ed8">
+  <text x="350" y="708" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#1d4ed8">
     🏢 CARGA — MERCADO LIVRE (Galpão Prologis Dutra II)
   </text>
   <text x="350" y="725" text-anchor="middle" class="box-sub">
@@ -2346,7 +2346,7 @@ if generation_file and load_file:
   <!-- Indicador de corte (laranja pulsante, simulado via opacity) -->
   {f'''<g>
     <rect x="240" y="660" width="220" height="22" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
-    <text x="350" y="676" text-anchor="middle" font-family="Arial" font-size="6" font-weight="700" fill="#c2410c">
+    <text x="350" y="676" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#c2410c">
       ⚠️ Corte ativo: {corte_kw:,} kW desperdiçados
     </text>
   </g>''' if corte_kw > 0 else ''}
@@ -2356,57 +2356,38 @@ if generation_file and load_file:
   <!-- ============================================== -->
   <g transform="translate(20, 750)">
     <rect x="0" y="0" width="14" height="3" fill="#9333ea"/>
-    <text x="20" y="4" font-family="Arial" font-size="5" fill="#374151">Rede Light → Carga</text>
+    <text x="20" y="4" font-family="Arial" font-size="9" fill="#374151">Rede Light → Carga</text>
 
     <rect x="135" y="0" width="14" height="3" fill="#16a34a"/>
-    <text x="155" y="4" font-family="Arial" font-size="5" fill="#374151">Solar → Carga</text>
+    <text x="155" y="4" font-family="Arial" font-size="9" fill="#374151">Solar → Carga</text>
 
     <line x1="240" y1="2" x2="254" y2="2" stroke="{cor_agc_ativo}" stroke-width="2" stroke-dasharray="2,2"/>
-    <text x="260" y="4" font-family="Arial" font-size="5" fill="#374151">Comunicação DEIF</text>
+    <text x="260" y="4" font-family="Arial" font-size="9" fill="#374151">Comunicação DEIF</text>
 
     <rect x="390" y="-3" width="10" height="10" rx="2" fill="white" stroke="#dc2626" stroke-width="1"/>
-    <text x="405" y="4" font-family="Arial" font-size="5" fill="#374151">Disjuntor (DJ)</text>
+    <text x="405" y="4" font-family="Arial" font-size="9" fill="#374151">Disjuntor (DJ)</text>
   </g>
 </svg>
             """
 
             # Renderiza o SVG via components.html para evitar que o markdown
             # interprete linhas indentadas como bloco de código.
-            # O wrapper HTML garante responsividade e dimensionamento correto.
+            # O wrapper HTML aplica um padding leve e remove margins do iframe.
             html_wrapper = f"""
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  html, body {{ width: 100%; height: 100%; margin: 0; padding: 0; background: transparent; }}
-  .svg-container {{ 
-    width: 100%; 
-    height: auto; 
-    display: flex; 
-    align-items: stretch; 
-    justify-content: center;
-    padding: 8px;
-    overflow: visible;
-  }}
-  svg {{ 
-    max-width: 100%; 
-    height: auto; 
-    display: block; 
-    overflow: visible;
-  }}
+  body {{ margin: 0; padding: 0; background: transparent; }}
+  svg {{ display: block; width: 100%; height: auto; }}
 </style>
 </head>
 <body>
-<div class="svg-container">
 {svg}
-</div>
 </body>
 </html>
 """
-            components.html(html_wrapper, height=1120, scrolling=False)
+            components.html(html_wrapper, height=1420, scrolling=False)
 
         # Cards informativos abaixo do diagrama
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
