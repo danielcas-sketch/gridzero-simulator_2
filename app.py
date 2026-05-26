@@ -2129,8 +2129,8 @@ if generation_file and load_file:
   <!-- ============================================== -->
   <!-- 1. REDE LIGHT (topo) -->
   <!-- ============================================== -->
-  <g>
-    <rect x="270" y="40" width="160" height="40" rx="8" fill="#eff6ff" stroke="#2563eb" class="equip-box"/>
+    <g>
+        <rect x="290" y="44" width="120" height="32" rx="8" fill="#eff6ff" stroke="#2563eb" class="equip-box"/>
     <text x="350" y="58" text-anchor="middle" class="box-titulo">⚡ REDE LIGHT</text>
     <text x="350" y="73" text-anchor="middle" class="box-sub">13,8 kV — 60 Hz</text>
   </g>
@@ -2147,7 +2147,7 @@ if generation_file and load_file:
   <!-- 2. CABINE PRIMÁRIA (Relé 7SR1002) -->
   <!-- ============================================== -->
   <g>
-    <rect x="245" y="115" width="210" height="48" rx="8" fill="#ffffff" stroke="#374151" class="equip-box"/>
+    <rect x="270" y="120" width="160" height="36" rx="8" fill="#ffffff" stroke="#374151" class="equip-box"/>
     <text x="350" y="133" text-anchor="middle" class="box-titulo">🏢 Cabine Primária Light</text>
     <text x="350" y="150" text-anchor="middle" class="box-sub">
       Relé Siemens 7SR1002 (50/51/50N/51N)
@@ -2170,7 +2170,7 @@ if generation_file and load_file:
     </text>
 
     <!-- Disjuntor MT (geral) -->
-    <rect x="305" y="234" width="90" height="32" rx="6" fill="white" stroke="#dc2626" stroke-width="1.5"/>
+    <rect x="320" y="238" width="70" height="24" rx="6" fill="white" stroke="#dc2626" stroke-width="1.5"/>
     <text x="350" y="248" text-anchor="middle" font-family="Arial" font-size="5" font-weight="700" fill="#dc2626">
       DJ-MT 13,8 kV
     </text>
@@ -2179,7 +2179,7 @@ if generation_file and load_file:
     </text>
 
     <!-- Relé 7SR1004 (Camada 3) -->
-    <rect x="140" y="285" width="180" height="58" rx="8" fill="white" stroke="#9ca3af" stroke-width="1.5"/>
+    <rect x="155" y="292" width="140" height="42" rx="8" fill="white" stroke="#9ca3af" stroke-width="1.5"/>
     <text x="230" y="302" text-anchor="middle" class="box-titulo">⚙️ Relé Siemens 7SR1004</text>
     <text x="230" y="318" text-anchor="middle" class="box-sub">ANSI 32 + 67</text>
     <text x="230" y="332" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600" fill="#9ca3af">
@@ -2187,8 +2187,8 @@ if generation_file and load_file:
     </text>
 
     <!-- AGC-150 MAINS (cérebro) -->
-    <rect x="380" y="285" width="180" height="58" rx="8" fill="white"
-          stroke="{cor_agc_ativo}" stroke-width="2"/>
+        <rect x="395" y="292" width="140" height="42" rx="8" fill="white"
+            stroke="{cor_agc_ativo}" stroke-width="2"/>
     <text x="470" y="302" text-anchor="middle" class="box-titulo">🧠 DEIF AGC-150 MAINS</text>
     <text x="470" y="318" text-anchor="middle" class="box-sub">TCs/TPs + ANSI 32</text>
     <text x="470" y="332" text-anchor="middle" font-family="Arial" font-size="5" font-weight="700" fill="{cor_agc_ativo}">
@@ -2208,30 +2208,30 @@ if generation_file and load_file:
   <!-- ============================================== -->
   <!-- 4. BARRAMENTO + 3 RAMOS DE TRANSFORMADORES -->
   <!-- ============================================== -->
-  <line x1="120" y1="395" x2="580" y2="395" stroke="#1f2937" stroke-width="3"/>
+    <line x1="120" y1="395" x2="580" y2="395" stroke="#1f2937" stroke-width="3"/>
   <line x1="170" y1="395" x2="170" y2="420" stroke="#1f2937" stroke-width="2"/>
   <line x1="350" y1="395" x2="350" y2="420" stroke="#1f2937" stroke-width="2"/>
   <line x1="530" y1="395" x2="530" y2="420" stroke="#1f2937" stroke-width="2"/>
 
   <!-- TR-05-G200 -->
-  <g>
-    <rect x="100" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
+    <g>
+        <rect x="110" y="430" width="110" height="38" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
     <text x="170" y="443" text-anchor="middle" class="box-titulo">TR-05-G200</text>
     <text x="170" y="459" text-anchor="middle" class="box-sub">500 kVA — 13,8/0,38 kV</text>
     <text x="170" y="471" text-anchor="middle" font-family="Arial" font-size="5" fill="#6b7280">4 inversores</text>
   </g>
 
   <!-- TR-07-CAG (o grande do meio) -->
-  <g>
-    <rect x="280" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
+    <g>
+        <rect x="290" y="430" width="110" height="38" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
     <text x="350" y="443" text-anchor="middle" class="box-titulo">TR-07-CAG</text>
     <text x="350" y="459" text-anchor="middle" class="box-sub">2.000 kVA — 13,8/0,38 kV</text>
     <text x="350" y="471" text-anchor="middle" font-family="Arial" font-size="5" fill="#6b7280">16 inversores</text>
   </g>
 
   <!-- TR-08-G200 -->
-  <g>
-    <rect x="460" y="425" width="140" height="50" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
+    <g>
+        <rect x="470" y="430" width="110" height="38" rx="6" fill="#f0f9ff" stroke="#0284c7" class="equip-box"/>
     <text x="530" y="443" text-anchor="middle" class="box-titulo">TR-08-G200</text>
     <text x="530" y="459" text-anchor="middle" class="box-sub">750 kVA — 13,8/0,38 kV</text>
     <text x="530" y="471" text-anchor="middle" font-family="Arial" font-size="5" fill="#6b7280">4 inversores</text>
@@ -2242,20 +2242,20 @@ if generation_file and load_file:
   <!-- ============================================== -->
 
   <!-- ASC #1 -->
-  <line x1="170" y1="475" x2="170" y2="500" stroke="#1f2937" stroke-width="2"/>
-  <rect x="115" y="500" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+    <line x1="170" y1="475" x2="170" y2="500" stroke="#1f2937" stroke-width="2"/>
+    <rect x="130" y="504" width="88" height="30" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
   <text x="170" y="516" text-anchor="middle" class="box-titulo">DEIF ASC-150 #1</text>
   <text x="170" y="530" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
   <!-- ASC #2 -->
-  <line x1="350" y1="475" x2="350" y2="500" stroke="#1f2937" stroke-width="2"/>
-  <rect x="295" y="500" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+    <line x1="350" y1="475" x2="350" y2="500" stroke="#1f2937" stroke-width="2"/>
+    <rect x="310" y="504" width="88" height="30" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
   <text x="350" y="516" text-anchor="middle" class="box-titulo">DEIF ASC-150 #2</text>
   <text x="350" y="530" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
   <!-- ASC #3 -->
-  <line x1="530" y1="475" x2="530" y2="500" stroke="#1f2937" stroke-width="2"/>
-  <rect x="475" y="500" width="110" height="42" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
+    <line x1="530" y1="475" x2="530" y2="500" stroke="#1f2937" stroke-width="2"/>
+    <rect x="490" y="504" width="88" height="30" rx="6" fill="white" stroke="{cor_agc_ativo}" stroke-width="1.5"/>
   <text x="530" y="516" text-anchor="middle" class="box-titulo">DEIF ASC-150 #3</text>
   <text x="530" y="530" text-anchor="middle" class="box-sub">Solar Plant Ctrl.</text>
 
@@ -2280,11 +2280,11 @@ if generation_file and load_file:
 
   <!-- Inversores TR-05 (4 unidades) -->
   <line x1="170" y1="542" x2="170" y2="565" stroke="#1f2937" stroke-width="2"/>
-  <rect x="135" y="565" width="70" height="14" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
+    <rect x="142" y="568" width="56" height="11" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
     <text x="170" y="575" text-anchor="middle" font-family="Arial" font-size="4" font-weight="600" fill="#dc2626">DJ BT</text>
   <line x1="170" y1="579" x2="170" y2="595" stroke="#1f2937" stroke-width="2"/>
-  <rect x="115" y="595" width="110" height="50" rx="6"
-        fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <rect x="120" y="598" width="88" height="38" rx="6"
+      fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
   <text x="170" y="613" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
   <text x="170" y="628" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
     <text x="170" y="640" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600"
@@ -2294,11 +2294,11 @@ if generation_file and load_file:
 
   <!-- Inversores TR-07 (16 unidades — o maior grupo) -->
   <line x1="350" y1="542" x2="350" y2="565" stroke="#1f2937" stroke-width="2"/>
-  <rect x="315" y="565" width="70" height="14" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
+    <rect x="322" y="568" width="56" height="11" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
     <text x="350" y="575" text-anchor="middle" font-family="Arial" font-size="4" font-weight="600" fill="#dc2626">DJ BT</text>
   <line x1="350" y1="579" x2="350" y2="595" stroke="#1f2937" stroke-width="2"/>
-  <rect x="295" y="595" width="110" height="50" rx="6"
-        fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <rect x="300" y="598" width="88" height="38" rx="6"
+      fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
   <text x="350" y="613" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 16× SE100K</text>
   <text x="350" y="628" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
     <text x="350" y="640" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600"
@@ -2308,11 +2308,11 @@ if generation_file and load_file:
 
   <!-- Inversores TR-08 (4 unidades) -->
   <line x1="530" y1="542" x2="530" y2="565" stroke="#1f2937" stroke-width="2"/>
-  <rect x="495" y="565" width="70" height="14" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
+    <rect x="502" y="568" width="56" height="11" rx="3" fill="white" stroke="#dc2626" stroke-width="1.2"/>
     <text x="530" y="575" text-anchor="middle" font-family="Arial" font-size="4" font-weight="600" fill="#dc2626">DJ BT</text>
   <line x1="530" y1="579" x2="530" y2="595" stroke="#1f2937" stroke-width="2"/>
-  <rect x="475" y="595" width="110" height="50" rx="6"
-        fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
+  <rect x="480" y="598" width="88" height="38" rx="6"
+      fill="#fff7ed" stroke="#f97316" stroke-width="1.5" opacity="{opacidade_inv}"/>
   <text x="530" y="613" text-anchor="middle" class="box-titulo" opacity="{opacidade_inv}">☀️ 4× SE100K</text>
   <text x="530" y="628" text-anchor="middle" class="box-sub" opacity="{opacidade_inv}">SolarEdge</text>
     <text x="530" y="640" text-anchor="middle" font-family="Arial" font-size="5" font-weight="600"
