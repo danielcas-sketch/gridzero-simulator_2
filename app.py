@@ -782,13 +782,19 @@ if "intervalo_inicio" not in st.session_state:
 if "intervalo_fim" not in st.session_state:
     st.session_state.intervalo_fim = None
 
-# Simulação de falha de camadas
-if "sim_falha_camada" not in st.session_state:
-    st.session_state.sim_falha_camada = None  # qual camada falhou: 0, 1, 2, 3 ou None
+# Simulação de falha: Camada 0 inicia o ciclo, demais são selecionáveis via checkbox
+if "sim_falha_iniciada" not in st.session_state:
+    st.session_state.sim_falha_iniciada = False
 if "sim_falha_ts" not in st.session_state:
-    st.session_state.sim_falha_ts = None  # timestamp do início da falha
+    st.session_state.sim_falha_ts = None
+if "sim_falha_c1" not in st.session_state:
+    st.session_state.sim_falha_c1 = False
+if "sim_falha_c2" not in st.session_state:
+    st.session_state.sim_falha_c2 = False
+if "sim_falha_c3" not in st.session_state:
+    st.session_state.sim_falha_c3 = False
 if "sim_speed" not in st.session_state:
-    st.session_state.sim_speed = 0.3  # segundos reais por segundo simulado
+    st.session_state.sim_speed = 0.3
 
 
 # =========================================================
@@ -822,15 +828,18 @@ def aplicar_atalho_intervalo(dias, df):
 
 
 # Callbacks da simulação de falha
-def disparar_falha(camada):
-    """Marca a camada como falha e registra o tempo de início."""
-    st.session_state.sim_falha_camada = camada
+def iniciar_ciclo_falha():
+    """Inicia o ciclo de falha pela Camada 0 (sempre o gatilho)."""
+    st.session_state.sim_falha_iniciada = True
     st.session_state.sim_falha_ts = time.time()
 
 def resetar_falha():
     """Reseta o estado de falha."""
-    st.session_state.sim_falha_camada = None
+    st.session_state.sim_falha_iniciada = False
     st.session_state.sim_falha_ts = None
+    st.session_state.sim_falha_c1 = False
+    st.session_state.sim_falha_c2 = False
+    st.session_state.sim_falha_c3 = False
 
 
 # =========================================================
@@ -2024,71 +2033,82 @@ if generation_file and load_file:
                 unsafe_allow_html=True
             )
 
+            st.markdown(
+                '<div style="font-size:11px; color:#6b7280; margin-bottom:8px; line-height:1.4;">'
+                'A falha sempre inicia pela <b>Camada 0</b> (controle DEIF). Marque as caixas '
+                'das camadas seguintes que também devem falhar — desmarcadas, atuam corretamente '
+                'e interrompem o ciclo.'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
             # Configuração das camadas: (numero, nome, descricao, tempo_atuacao_s)
             camadas_config = [
                 (0, "Controle DEIF (laço fechado)", "AGC-150 lê potência e envia setpoint aos ASCs", 0),
-                (1, "ANSI 32 do AGC-150", "Atua nos disjuntores BT em 3 s", 3),
-                (2, "Relé auxiliar ANSI 32", "Atua nos disjuntores BT em 6 s", 6),
+                (1, "ANSI 32 do AGC-150", "Atua nos disjuntores BT-UFV em 3 s", 3),
+                (2, "Relé auxiliar ANSI 32", "Atua nos disjuntores BT-UFV em 6 s", 6),
                 (3, "Siemens 7SR1004 (MT)", "Abre disjuntor de MT do PMT em 10 s", 10),
             ]
 
-            # Cálculo do tempo simulado decorrido desde a falha
-            falha_atual = st.session_state.sim_falha_camada
+            # Cálculo do tempo simulado decorrido desde o início do ciclo
+            ciclo_iniciado = st.session_state.sim_falha_iniciada
             falha_ts = st.session_state.sim_falha_ts
             speed = st.session_state.sim_speed
 
-            if falha_atual is not None and falha_ts is not None:
-                tempo_real = time.time() - falha_ts
-                # Tempo simulado: 1 segundo simulado = `speed` segundos reais
-                tempo_simulado = tempo_real / speed
+            if ciclo_iniciado and falha_ts is not None:
+                tempo_simulado = (time.time() - falha_ts) / speed
             else:
                 tempo_simulado = 0
 
-            # Determinar estado de cada camada
-            # Camada 0 está ATIVA se há geração e ninguém falhou ainda
-            # Quando uma camada N falha, ela vira "FALHA" e as superiores começam contagem
-            # Cada camada superior atua quando tempo_simulado >= seu tempo_atuacao
             c0_ativo = sim_geracao > 0
+            falhas_marcadas = {
+                1: st.session_state.sim_falha_c1,
+                2: st.session_state.sim_falha_c2,
+                3: st.session_state.sim_falha_c3,
+            }
 
             def estado_camada(num, tempo_atuacao):
-                """Retorna (status, cor, tempo_restante, atuou)"""
-                if falha_atual is None:
-                    # Sem falha simulada
+                """Retorna (status, cor, tempo_restante, mostrar_timer).
+                Lógica em cascata: cada camada só "conta" se todas as anteriores falharam.
+                Se chega ao seu tempo: se marcada para falhar, vira FALHA; senão ATUOU (ciclo para).
+                """
+                if not ciclo_iniciado:
                     if num == 0:
                         return ("ATIVO" if c0_ativo else "standby",
-                                "#16a34a" if c0_ativo else "#9ca3af",
-                                None, False)
-                    else:
-                        return ("standby", "#9ca3af", None, False)
-                else:
-                    # Há falha em alguma camada
-                    if num == falha_atual:
-                        return ("⚠️ FALHA", "#dc2626", None, False)
-                    elif num < falha_atual:
-                        # Camadas anteriores à falhada permanecem ativas/standby normalmente
-                        if num == 0:
-                            return ("ATIVO" if c0_ativo else "standby",
-                                    "#16a34a" if c0_ativo else "#9ca3af",
-                                    None, False)
-                        return ("standby", "#9ca3af", None, False)
-                    else:
-                        # Camadas superiores à falhada: contam tempo
-                        if tempo_simulado >= tempo_atuacao:
-                            return ("⚡ ATUOU", "#16a34a", 0, True)
-                        else:
-                            restante = tempo_atuacao - tempo_simulado
-                            return ("⏱ contando", "#ca8a04", restante, False)
+                                "#16a34a" if c0_ativo else "#9ca3af", None, False)
+                    return ("standby", "#9ca3af", None, False)
 
-            def camada_row_v2(num, nome, descricao, status, cor, tempo_restante, atuou):
+                # Camada 0 sempre falha quando o ciclo é iniciado
+                if num == 0:
+                    return ("⚠️ FALHA", "#dc2626", None, False)
+
+                # Para camadas 1, 2, 3: verifica se todas as anteriores falharam
+                anteriores_falharam = all(
+                    falhas_marcadas.get(n, False) for n in range(1, num)
+                )
+                if not anteriores_falharam:
+                    # Alguma anterior atuou e parou o ciclo — esta nem chega a contar
+                    return ("standby", "#9ca3af", None, False)
+
+                # Esta camada está em contagem (ou já atuou)
+                if tempo_simulado >= tempo_atuacao:
+                    if falhas_marcadas[num]:
+                        return ("⚠️ FALHA", "#dc2626", 0, True)
+                    else:
+                        return ("⚡ ATUOU", "#16a34a", 0, True)
+                else:
+                    restante = tempo_atuacao - tempo_simulado
+                    return ("⏱ contando", "#ca8a04", restante, True)
+
+            def camada_row_v2(num, nome, descricao, status, cor, tempo_restante, mostrar_timer):
                 bg_cor = "#f0fdf4" if cor == "#16a34a" else (
                     "#fef2f2" if cor == "#dc2626" else (
                         "#fefce8" if cor == "#ca8a04" else "#f9fafb"
                     )
                 )
-                # Cronômetro
-                if tempo_restante is not None:
-                    if atuou:
-                        timer_html = '<span style="font-size:14px; font-weight:700; color:#16a34a;">00.0s</span>'
+                if mostrar_timer:
+                    if tempo_restante == 0:
+                        timer_html = f'<span style="font-size:14px; font-weight:700; color:{cor};">00.0s</span>'
                     else:
                         timer_html = f'<span style="font-size:14px; font-weight:700; color:#ca8a04;">{tempo_restante:04.1f}s</span>'
                 else:
@@ -2105,32 +2125,41 @@ if generation_file and load_file:
                     f'<div style="background:white; border:1px solid #e5e7eb; border-radius:4px; '
                     f'padding:2px 6px; min-width:54px; text-align:center;">{timer_html}</div>'
                     f'<span style="font-size:10px; font-weight:700; color:{cor}; '
-                    f'letter-spacing:0.05em; min-width:65px; text-align:right;">{status}</span>'
+                    f'letter-spacing:0.05em; min-width:75px; text-align:right;">{status}</span>'
                     f'</div>'
                     f'<div style="font-size:10px; color:#6b7280; margin-top:2px; line-height:1.3;">{descricao}</div>'
                     f'</div>'
                 )
 
-            # Renderizar cada camada + botão de falha
+            # Renderizar cada camada
             for num, nome, descricao, t_atuacao in camadas_config:
-                status, cor, t_rest, atuou = estado_camada(num, t_atuacao)
+                status, cor, t_rest, mostrar_timer = estado_camada(num, t_atuacao)
                 st.markdown(
-                    camada_row_v2(num, nome, descricao, status, cor, t_rest, atuou),
+                    camada_row_v2(num, nome, descricao, status, cor, t_rest, mostrar_timer),
                     unsafe_allow_html=True
                 )
-                # Botão de falha embaixo de cada camada (exceto se já há falha em outra camada)
-                if falha_atual is None:
-                    st.button(
-                        f"💥 Simular Falha da Camada {num}",
-                        key=f"btn_falha_c{num}",
-                        on_click=disparar_falha,
-                        args=(num,),
-                        use_container_width=True
+                # Camadas 1, 2, 3: checkbox para escolher se vai falhar
+                if num in (1, 2, 3):
+                    st.checkbox(
+                        f"Esta camada também falhará",
+                        value=falhas_marcadas[num],
+                        key=f"sim_falha_c{num}",
+                        disabled=ciclo_iniciado,
+                        help="Marque para que esta camada falhe quando chegar seu tempo. "
+                             "Desmarcada: ela atua corretamente e interrompe o ciclo."
                     )
 
-            # Botão de reset se há falha ativa
-            if falha_atual is not None:
-                st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+            # Botão único de iniciar/resetar
+            st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+            if not ciclo_iniciado:
+                st.button(
+                    "💥 Iniciar Ciclo de Falha (Camada 0)",
+                    key="btn_iniciar_falha",
+                    on_click=iniciar_ciclo_falha,
+                    use_container_width=True,
+                    type="primary"
+                )
+            else:
                 st.button(
                     "↻ Resetar Simulação de Falha",
                     key="btn_reset_falha",
@@ -2173,7 +2202,7 @@ if generation_file and load_file:
             cor_seta_solar = "#16a34a" if geracao_efetiva > 0 else "#cbd5e1"
 
             # Status visual do AGC-150 (Camada 0)
-            if falha_atual == 0:
+            if ciclo_iniciado:
                 cor_agc_ativo = "#dc2626"
                 c0_status = "⚠️ FALHA"
             elif c0_ativo:
@@ -2530,16 +2559,27 @@ if generation_file and load_file:
             unsafe_allow_html=True
         )
 
-        # Auto-refresh enquanto há falha ativa e ainda restam camadas contando
-        if st.session_state.sim_falha_camada is not None:
-            falha_n = st.session_state.sim_falha_camada
+        # Auto-refresh enquanto o ciclo de falha está em andamento
+        if st.session_state.sim_falha_iniciada:
+            # Camadas marcadas como falha encadeiam o ciclo até onde houver checkbox
             tempos_atuacao = {1: 3, 2: 6, 3: 10}
-            # tempo máximo entre as camadas superiores à que falhou
-            tempos_superiores = [t for c, t in tempos_atuacao.items() if c > falha_n]
-            if tempos_superiores:
-                tempo_max = max(tempos_superiores)
+            falhas_marcadas_dict = {
+                1: st.session_state.sim_falha_c1,
+                2: st.session_state.sim_falha_c2,
+                3: st.session_state.sim_falha_c3,
+            }
+            # Última camada que vai chegar a contar (todas as anteriores precisam estar marcadas)
+            ultima_camada_ativa = None
+            for n in (1, 2, 3):
+                anteriores_marcadas = all(falhas_marcadas_dict[k] for k in range(1, n))
+                if anteriores_marcadas:
+                    ultima_camada_ativa = n
+                else:
+                    break
+            if ultima_camada_ativa is not None:
+                tempo_max = tempos_atuacao[ultima_camada_ativa]
                 tempo_decorrido = (time.time() - st.session_state.sim_falha_ts) / st.session_state.sim_speed
-                if tempo_decorrido < tempo_max + 1:  # +1s de folga após última atuação
+                if tempo_decorrido < tempo_max + 1:
                     time.sleep(0.15)
                     st.rerun()
 
