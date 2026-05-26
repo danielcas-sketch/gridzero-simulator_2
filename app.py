@@ -2229,10 +2229,17 @@ if generation_file and load_file:
             # Disjuntores BT-UFV: roxo fechado / vermelho aberto quando camada 1 ou 2 atua
             c1_atuou = ciclo_iniciado and not st.session_state.sim_falha_c1 and tempo_simulado >= tempos_atuacao[1]
             c2_atuou = ciclo_iniciado and st.session_state.sim_falha_c1 and not st.session_state.sim_falha_c2 and tempo_simulado >= tempos_atuacao[2]
+            c3_atuou = ciclo_iniciado and st.session_state.sim_falha_c1 and st.session_state.sim_falha_c2 and not st.session_state.sim_falha_c3 and tempo_simulado >= tempos_atuacao[3]
             bt_ufv_atuou = c1_atuou or c2_atuou
             bt_ufv_stroke = "#dc2626" if bt_ufv_atuou else "#9333ea"
             bt_ufv_label = "Aberto" if bt_ufv_atuou else "Fechado"
             bt_ufv_label_color = "#dc2626" if bt_ufv_atuou else "#9333ea"
+
+            # Disjuntor MT do PMT: roxo fechado / vermelho aberto quando camada 3 atua
+            dj_mt_atuou = c3_atuou
+            dj_mt_stroke = "#dc2626" if dj_mt_atuou else "#9333ea"
+            dj_mt_label = "Aberto" if dj_mt_atuou else "Fechado"
+            dj_mt_label_color = "#dc2626" if dj_mt_atuou else "#9333ea"
 
             # Opacidade dos inversores conforme corte
             # Se há corte, mostra que estão "limitados" (semi-transparente no topo)
@@ -2288,9 +2295,9 @@ if generation_file and load_file:
     🏭 PMT-02-G200 (Sala de PMT — Mercado Livre)
   </text>
 
-  <rect x="555" y="234" width="90" height="32" rx="6" fill="white" stroke="#dc2626" stroke-width="1.5"/>
-  <text x="600" y="248" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#dc2626">DJ-MT 13,8 kV</text>
-  <text x="600" y="260" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">Fechado</text>
+  <rect x="555" y="234" width="90" height="32" rx="6" fill="white" stroke="{dj_mt_stroke}" stroke-width="1.5"/>
+  <text x="600" y="248" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="{dj_mt_stroke}">DJ-MT 13,8 kV</text>
+  <text x="600" y="260" text-anchor="middle" font-family="Arial" font-size="9" fill="{dj_mt_label_color}">{dj_mt_label}</text>
 
   <rect x="390" y="285" width="180" height="58" rx="8" fill="white" stroke="#9ca3af" stroke-width="1.5"/>
   <text x="480" y="302" text-anchor="middle" class="box-titulo">⚙️ Relé Siemens 7SR1004</text>
